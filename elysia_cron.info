@@ -1,2 +1,3 @@
+; $Id $
 name = "Elysia Cron"
-description = "Extended cron support."
+description = "Extended cron support with crontab-like scheduling and other features."

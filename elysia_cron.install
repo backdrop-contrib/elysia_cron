@@ -1,0 +1,21 @@
+<?
+
+function elysia_cron_install() {
+  // elysia_cron MUST be the first returned by module_list
+  // This is to ensure elysia_cron_cron is the first hook called by standard cron.php.
+  $min = db_result(db_query("select min(weight) from {system}"));
+  if ($min > -65535) $min = -65535; 
+  else $min--;
+  db_query("UPDATE {system} SET weight = %d WHERE name = '%s'", $min, 'elysia_cron');
+  
+  drupal_set_message('Elysia cron installed. Setup could be found at '.l(t('Settings page'), 'admin/build/cron/settings').'. Remember to replace cron.php or to enable "runtime replacement" in setup page, and to change system crontab schedule. See INSTALL.TXT for more info.');
+}
+
+function elysia_cron_uninstall() {
+  $rs = db_query("select name from {variable} where name like 'elysia_cron_%%'");
+  while ($o = db_fetch_object($rs))
+    variable_del($o->name);
+  drupal_set_message('Elysia cron uninstalled.');
+}
+
+?>
