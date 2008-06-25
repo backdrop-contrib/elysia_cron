@@ -122,7 +122,7 @@ sections of the configuration
 0 2 * * 0 update_status_cron
 
 # Trackback ping process every 15min and on a channel called "net"
-*/15 * * * * ctx: net trackback_cron
+*/15 * * * * ctx:net trackback_cron
 
 # Disable node_cron (i must set the cron rule even if disabled)
 - */15 * * * * node_cron
