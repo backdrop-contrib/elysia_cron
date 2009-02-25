@@ -31,9 +31,15 @@ ADVANCED
 
 With the standard installation described above elysia cron will be launched
 by standard drupal cron.
-This add a (very very) little overhead to all cron calls.
-I suggest to ignore that, however if you want you can completely skip drupal
+This add a little overhead to all cron calls (expecially for cache management
+of variables, that is purged at each cron call).
+You can usually ignore that, however if you want you can completely skip drupal
 cron (and launch elysia_cron directly) by replacing file "cron.php" in the
 root of drupal dir with the one in the elysia_cron package.
 If you do so you must remember to not replace cron.php when upgrading drupal
 core. 
+
+To avoid the replacement of cron.php you can also call directly elysia cron's 
+cron.php in crontab. 
+Example:
+* * * * * /usr/bin/wget -O - -q http://example.com/sites/all/modules/elysia_cron/cron.php

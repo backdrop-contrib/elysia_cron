@@ -72,6 +72,13 @@ function elysia_cron_perm() {
   return array('administer elysia_cron');
 }
 
+function elysia_cron_init() {
+  global $conf;
+  
+  // I need to set cron_semaphore always to false. That way standard drupal cron is always bypassed
+  $conf['cron_semaphore'] = false;
+}
+
 /**
  * Hook cron is invoked only by standard drupal cron.
  * It's used to throw a warning (drupal cron must NOT be executed if this
@@ -79,13 +86,22 @@ function elysia_cron_perm() {
  * elysia_cron_runtime_replacement is true). 
  */
 function elysia_cron_cron() {
+  global $conf;
+  
+  // Some modules (feedapi, ipaper...) uses the internal "cron_semaphore" variable to detect
+  // start time of cron process. I'll set this only in memory for that purpose.
+  // (In normal druapl cron execution that is done by a variable_set just before this call, 
+  // but i need to set this manually if drupal cron is bypassed)
+  $conf['cron_semaphore'] = time();
+  
   //if (_ec_variable_get('elysia_cron_runtime_replacement', false)) {
     elysia_cron_run();
   //} else
-  //  watchdog('elysia_cron', 'Standard drupal cron started (and should not!), forced termination. Please check elysia_cron installation.', array(), WATCHDOG_ERROR);
+  //  watchdog('elysia_cron', 'Standard drupal cron started (and should not!), forced termination. Please check elysia_cron installation.', WATCHDOG_ERROR);
     
   // Terminate drupal cron
   _ec_variable_del('cron_semaphore');
+  $conf['cron_semaphore'] = false;
   
   exit();
 }
@@ -184,13 +200,13 @@ function elysia_cron_check_version_update() {
 function _ec_variable_get($name, $default) {
   //return variable_get($name, $default);
   
-  static $variables;
+  global $_ec_variables;
   
-  if (!is_array($variables)) {
-    $variables = array();
+  if (!is_array($_ec_variables)) {
+    $_ec_variables = array();
     $result = db_query("select * from {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%'");
     while ($variable = db_fetch_object($result))
-      $variables[$variable->name] = unserialize($variable->value);
+      $_ec_variables[$variable->name] = unserialize($variable->value);
   }
   
   // If there is a $GLOBALS['original_conf'] = $conf; at the end of  settings.php i consider it. 
@@ -198,8 +214,8 @@ function _ec_variable_get($name, $default) {
   
   if (isset($original_conf[$name]))
     return $original_conf[$name];
-  if (isset($variables[$name]))
-    return $variables[$name];
+  if (isset($_ec_variables[$name]))
+    return $_ec_variables[$name];
   
   return $default;  
 }
@@ -213,6 +229,8 @@ function _ec_variable_set($name, $value) {
   db_query("DELETE FROM {variable} WHERE name = '%s'", $name);
   db_query("INSERT INTO {variable} (name, value) VALUES ('%s', '%s')", $name, serialize($value));
   db_unlock_tables();
+  
+  $_ec_variables[$name] = $value;
 }
 
 /**
@@ -223,6 +241,8 @@ function _ec_variable_del($name) {
   db_lock_table('variable');
   db_query("DELETE FROM {variable} WHERE name = '%s'", $name);
   db_unlock_tables();
+  
+  unset($_ec_variables[$name]);
 }
 
 function _ec_get_name($name) {
