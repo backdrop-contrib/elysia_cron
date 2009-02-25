@@ -1,5 +1,5 @@
 <?php
-// $Id $
+// $Id$
 
 /**
  * ELYSIA_CRON
@@ -24,7 +24,7 @@
  * - "set as terminated" on running jobs/contexts
  * - confirm page for "reset statistics"
  * - better internationalization
- * - sort jobs on summary page 
+ * - detect system time "jumps" (if a check occurs BEFORE previous check)
  */
 
 /*******************************************************************************
@@ -45,11 +45,13 @@ function elysia_cron_menu($maycache) {
       'path' => 'admin/build/cron/status',
       'type' => MENU_DEFAULT_LOCAL_TASK,
       'title' => t('Status'),
+      'weight' => 1,
     );
     $items[] = array(
       'path' => 'admin/build/cron/reset',
       'type' => MENU_LOCAL_TASK,
       'title' => t('Reset statistics'),
+      'weight' => 2,
       'callback' => 'elysia_cron_reset_page',
       'access' => user_access('administer elysia_cron'),
     );
@@ -57,6 +59,7 @@ function elysia_cron_menu($maycache) {
       'path' => 'admin/build/cron/settings',
       'type' => MENU_LOCAL_TASK,
       'title' => t('Settings'),
+      'weight' => 3,
       'callback' => 'drupal_get_form',
       'callback arguments' => 'elysia_cron_settings_form',
       'access' => user_access('administer elysia_cron'),
@@ -76,15 +79,13 @@ function elysia_cron_perm() {
  * elysia_cron_runtime_replacement is true). 
  */
 function elysia_cron_cron() {
-  // Terminate drupal cron
-  variable_del('cron_semaphore', time());
-  
-  if (variable_get('elysia_cron_runtime_replacement', false)) {
+  //if (_ec_variable_get('elysia_cron_runtime_replacement', false)) {
     elysia_cron_run();
+  //} else
+  //  watchdog('elysia_cron', 'Standard drupal cron started (and should not!), forced termination. Please check elysia_cron installation.', WATCHDOG_ERROR);
     
-  } else {
-    watchdog('elysia_cron', 'Standard drupal cron started (and should not!), forced termination. Please check elysia_cron installation.', WATCHDOG_ERROR);
-  }
+  // Terminate drupal cron
+  _ec_variable_del('cron_semaphore');
   
   exit();
 }
@@ -106,6 +107,291 @@ function elysia_cron_help($section) {
 }
 
 /*******************************************************************************
+ * ELYSIA CRON VERSION UPDATE
+ ******************************************************************************/
+
+/**
+ * Runtime version update
+ */
+function elysia_cron_check_version_update() {
+  $ver = _ec_variable_get('elysia_cron_version', 0);
+  if (!$ver) {
+    
+    $unchanged = array(
+      'elysia_cron_last_context', 
+      'elysia_cron_last_run',
+      'elysia_cron_disabled',
+      'elysia_cron_semaphore',
+      'elysia_cron_key',
+      'elysia_cron_allowed_hosts',
+      'elysia_cron_default_rule',
+      'elysia_cron_script',
+      'elysia_cron_runtime_replacement',
+    );
+    
+    $rs = db_query('select * from {variable} where name like "elysia_cron_%%"');
+    while ($v = db_fetch_object($rs)) {
+      if (!in_array($v->name, $unchanged)) {
+        $vn = false;
+        if (preg_match('/^elysia_cron_ctx_(.*)_(running|disabled|last_run|last_aborted|abort_count|execution_count|last_execution_time|avg_execution_time|max_execution_time|last_shutdown_time|last_abort_function)/', $v->name, $r)) {
+          switch ($r[2]) {
+            case 'running': $vn = 'ecc_'._ec_get_name($r[1]).'_r'; break;
+            case 'disabled': $vn = 'ecc_'._ec_get_name($r[1]).'_d'; break;
+            case 'last_run': $vn = 'ecc_'._ec_get_name($r[1]).'_lr'; break;
+            case 'last_aborted': $vn = 'ecc_'._ec_get_name($r[1]).'_la'; break;
+            case 'abort_count': $vn = 'ecc_'._ec_get_name($r[1]).'_ac'; break;
+            case 'execution_count': $vn = 'ecc_'._ec_get_name($r[1]).'_ec'; break;
+            case 'last_execution_time': $vn = 'ecc_'._ec_get_name($r[1]).'_let'; break;
+            case 'avg_execution_time': $vn = 'ecc_'._ec_get_name($r[1]).'_aet'; break;
+            case 'max_execution_time': $vn = 'ecc_'._ec_get_name($r[1]).'_met'; break;
+            case 'last_shutdown_time': $vn = 'ecc_'._ec_get_name($r[1]).'_lst'; break;
+            case 'last_abort_function': $vn = 'ecc_'._ec_get_name($r[1]).'_laf'; break;
+          }
+        } elseif (preg_match('/^elysia_cron_(.*)_(rule|disabled|context|running|last_run|last_execution_time|execution_count|avg_execution_time|max_execution_time)/', $v->name, $r)) {
+          switch ($r[2]) {
+            case 'rule': $vn = 'ec_'._ec_get_name($r[1]).'_rul'; break;
+            case 'disabled': $vn = 'ec_'._ec_get_name($r[1]).'_d'; break;
+            case 'context': $vn = 'ec_'._ec_get_name($r[1]).'_c'; break;
+            case 'running': $vn = 'ec_'._ec_get_name($r[1]).'_r'; break;
+            case 'last_run': $vn = 'ec_'._ec_get_name($r[1]).'_lr'; break;
+            case 'last_execution_time': $vn = 'ec_'._ec_get_name($r[1]).'_let'; break;
+            case 'execution_count': $vn = 'ec_'._ec_get_name($r[1]).'_ec'; break;
+            case 'avg_execution_time': $vn = 'ec_'._ec_get_name($r[1]).'_aet'; break;
+            case 'max_execution_time': $vn = 'ec_'._ec_get_name($r[1]).'_met'; break;
+          }
+        }
+        if ($vn)
+          _ec_variable_set($vn, unserialize($v->value));
+        else
+          watchdog('cron', 'Error in update, cant convert '.$v->name.' (value: '.$v->value.')', WATCHDOG_ERROR);
+
+        _ec_variable_del($v->name);
+      }
+    }
+    
+    _ec_variable_set('elysia_cron_version', 20090218);
+  }
+}
+
+/*******************************************************************************
+ * SETTINGS API
+ ******************************************************************************/
+
+/**
+ * A substitute for variable_get to avoid cache management
+ * WARN_UPGRADE
+ */
+function _ec_variable_get($name, $default) {
+  //return variable_get($name, $default);
+  
+  static $variables;
+  
+  if (!is_array($variables)) {
+    $variables = array();
+    $result = db_query("select * from {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%'");
+    while ($variable = db_fetch_object($result))
+      $variables[$variable->name] = unserialize($variable->value);
+  }
+  
+  // If there is a $GLOBALS['original_conf'] = $conf; at the end of  settings.php i consider it. 
+  global $original_conf;
+  
+  if (isset($original_conf[$name]))
+    return $original_conf[$name];
+  if (isset($variables[$name]))
+    return $variables[$name];
+  
+  return $default;  
+}
+
+/**
+ * A substitute for variable_set to avoid cache management
+ * WARN_UPGRADE
+ */
+function _ec_variable_set($name, $value) {
+  db_lock_table('variable');
+  db_query("DELETE FROM {variable} WHERE name = '%s'", $name);
+  db_query("INSERT INTO {variable} (name, value) VALUES ('%s', '%s')", $name, serialize($value));
+  db_unlock_tables();
+}
+
+/**
+ * A substitute for variable_del to avoid cache management
+ * WARN_UPGRADE
+ */
+function _ec_variable_del($name) {
+  db_lock_table('variable');
+  db_query("DELETE FROM {variable} WHERE name = '%s'", $name);
+  db_unlock_tables();
+}
+
+function _ec_get_name($name) {
+  $maxlen = VERSION >= 6 ? 120 : 40;
+  if (strlen($name) < $maxlen)
+    return $name;
+  $border = ($maxlen - 32) / 2; 
+  return substr($name, 0, $border).md5($name).substr($name, -$border);
+}
+
+function elysia_cron_is_context_running($context, $default = false) {
+  return _ec_variable_get('ecc_'._ec_get_name($context).'_r', $default);
+}
+
+function elysia_cron_set_context_running($context, $v) {
+  return _ec_variable_set('ecc_'._ec_get_name($context).'_r', $v);
+}
+
+function elysia_cron_is_context_disabled($context, $default = false) {
+  return _ec_variable_get('ecc_'._ec_get_name($context).'_d', $default);
+}
+
+function elysia_cron_set_context_disabled($context, $v) {
+  return _ec_variable_set('ecc_'._ec_get_name($context).'_d', $v);
+}
+
+function elysia_cron_reset_context_disabled($context) {
+  return _ec_variable_del('ecc_'._ec_get_name($context).'_d');
+}
+
+function elysia_cron_get_context_last_run($context, $default = false) {
+  return _ec_variable_get('ecc_'._ec_get_name($context).'_lr', $default);
+}
+
+function elysia_cron_set_context_last_run($context, $v) {
+  return _ec_variable_set('ecc_'._ec_get_name($context).'_lr', $v);
+}
+
+function elysia_cron_get_context_last_aborted($context, $default = false) {
+  return _ec_variable_get('ecc_'._ec_get_name($context).'_la', $default);
+}
+
+function elysia_cron_set_context_last_aborted($context, $v) {
+  return _ec_variable_set('ecc_'._ec_get_name($context).'_la', $v);
+}
+
+function elysia_cron_get_context_abort_count($context, $default = 0) {
+  return _ec_variable_get('ecc_'._ec_get_name($context).'_ac', $default);
+}
+
+function elysia_cron_set_context_abort_count($context, $v) {
+  return _ec_variable_set('ecc_'._ec_get_name($context).'_ac', $v);
+}
+
+function elysia_cron_get_context_stats($context) {
+  return array(
+    'last_run' => _ec_variable_get('ecc_'._ec_get_name($context).'_lr', 0),
+    'last_execution_time' => _ec_variable_get('ecc_'._ec_get_name($context).'_let', 0),
+    'execution_count' => _ec_variable_get('ecc_'._ec_get_name($context).'_ec', 0),
+    'avg_execution_time' => _ec_variable_get('ecc_'._ec_get_name($context).'_aet', 0),
+    'max_execution_time' => _ec_variable_get('ecc_'._ec_get_name($context).'_met', 0),
+    'last_shutdown_time' => _ec_variable_get('ecc_'._ec_get_name($context).'_lst', 0),
+    'last_aborted' => _ec_variable_get('ecc_'._ec_get_name($context).'_la', 0),
+    'abort_count' => _ec_variable_get('ecc_'._ec_get_name($context).'_ac', 0),
+    'last_abort_function' => _ec_variable_get('ecc_'._ec_get_name($context).'_laf', ''),
+  );
+}
+
+function elysia_cron_set_context_stats($context, $last_run = -1, $last_execution_time = -1, $execution_count = -1, 
+    $avg_execution_time = -1, $max_execution_time = -1, $last_shutdown_time = -1, $last_aborted = -1,
+    $abort_count = -1, $last_abort_function = -1) {
+  if ($last_run != -1)
+    _ec_variable_set('ecc_'._ec_get_name($context).'_lr', $last_run);
+  if ($last_execution_time != -1)
+    _ec_variable_set('ecc_'._ec_get_name($context).'_let', $last_execution_time);
+  if ($execution_count != -1)
+    _ec_variable_set('ecc_'._ec_get_name($context).'_ec', $execution_count);
+  if ($avg_execution_time != -1)
+    _ec_variable_set('ecc_'._ec_get_name($context).'_aet', $avg_execution_time);
+  if ($max_execution_time != -1)
+    _ec_variable_set('ecc_'._ec_get_name($context).'_met', $max_execution_time);
+  if ($last_shutdown_time != -1)
+    _ec_variable_set('ecc_'._ec_get_name($context).'_lst', $last_shutdown_time);
+  if ($last_aborted != -1)
+    _ec_variable_set('ecc_'._ec_get_name($context).'_la', $last_aborted);
+  if ($abort_count != -1)
+    _ec_variable_set('ecc_'._ec_get_name($context).'_ac', $abort_count);
+  if ($last_abort_function != -1)
+    _ec_variable_set('ecc_'._ec_get_name($context).'_laf', $last_abort_function);
+}
+
+function elysia_cron_get_job_rule($job, $default = '') {
+  return _ec_variable_get('ec_'._ec_get_name($job).'_rul', $default);
+}
+
+function elysia_cron_set_job_rule($job, $v) {
+  return _ec_variable_set('ec_'._ec_get_name($job).'_rul', $v);
+}
+
+function elysia_cron_reset_job_rule($job) {
+  return _ec_variable_del('ec_'._ec_get_name($job).'_rul');
+}
+
+function elysia_cron_is_job_disabled($job, $default = false) {
+  return _ec_variable_get('ec_'._ec_get_name($job).'_d', $default);
+}
+
+function elysia_cron_set_job_disabled($job, $v) {
+  return _ec_variable_set('ec_'._ec_get_name($job).'_d', $v);
+}
+
+function elysia_cron_reset_job_disabled($job) {
+  return _ec_variable_del('ec_'._ec_get_name($job).'_d');
+}
+
+function elysia_cron_get_job_context($job, $default = '') {
+  $c = _ec_variable_get('ec_'._ec_get_name($job).'_c', $default);
+  return !$c ? $default : $c;
+}
+
+function elysia_cron_set_job_context($job, $v) {
+  return _ec_variable_set('ec_'._ec_get_name($job).'_c', $v);
+}
+
+function elysia_cron_reset_job_context($job) {
+  return _ec_variable_del('ec_'._ec_get_name($job).'_c');
+}
+
+function elysia_cron_is_job_running($job, $default = false) {
+  return _ec_variable_get('ec_'._ec_get_name($job).'_r', $default);
+}
+
+function elysia_cron_set_job_running($job, $v) {
+  return _ec_variable_set('ec_'._ec_get_name($job).'_r', $v);
+}
+
+function elysia_cron_get_job_last_run($job, $default = 0) {
+  return _ec_variable_get('ec_'._ec_get_name($job).'_lr', $default);
+}
+
+function elysia_cron_set_job_last_run($job, $v) {
+  return _ec_variable_set('ec_'._ec_get_name($job).'_lr', $v);
+}
+
+function elysia_cron_get_job_stats($job) {
+  return array(
+    'last_run' => _ec_variable_get('ec_'._ec_get_name($job).'_lr', 0),
+    'last_execution_time' => _ec_variable_get('ec_'._ec_get_name($job).'_let', 0),
+    'execution_count' => _ec_variable_get('ec_'._ec_get_name($job).'_ec', 0),
+    'avg_execution_time' => _ec_variable_get('ec_'._ec_get_name($job).'_aet', 0),
+    'max_execution_time' => _ec_variable_get('ec_'._ec_get_name($job).'_met', 0),
+  );
+}
+
+function elysia_cron_set_job_stats($job, $last_run = -1, $last_execution_time = -1, $execution_count = -1, 
+  $avg_execution_time = -1, $max_execution_time= -1) {
+  if ($last_run != -1) 
+    _ec_variable_set('ec_'._ec_get_name($job).'_lr', $last_run);
+  if ($last_execution_time != -1) 
+    _ec_variable_set('ec_'._ec_get_name($job).'_let', $last_execution_time);
+  if ($execution_count != -1) 
+    _ec_variable_set('ec_'._ec_get_name($job).'_ec', $execution_count);
+  if ($avg_execution_time != -1) 
+    _ec_variable_set('ec_'._ec_get_name($job).'_aet', $avg_execution_time);
+  if ($max_execution_time != -1) 
+    _ec_variable_set('ec_'._ec_get_name($job).'_met', $max_execution_time);
+}
+
+/*******************************************************************************
  * INTERFACE
  ******************************************************************************/
 
@@ -114,25 +400,25 @@ function elysia_cron_admin_page() {
 
   global $elysia_cron_settings, $elysia_cron_settings_by_context, $elysia_cron_current_context, $cron_completed, $cron_completed_time;
   
-  //dprint('Disabled: '.variable_get('elysia_cron_disabled', false));
-  $v = variable_get('elysia_cron_disabled', false);
+  //dprint('Disabled: '._ec_variable_get('elysia_cron_disabled', false));
+  $v = _ec_variable_get('elysia_cron_disabled', false);
   $output .= '<p>Global disable: <i>'.($v ? '<span class="warn">YES</span>':'no').'</i></p>';
-  $output .= '<p>Last context executed: <i>'.variable_get('elysia_cron_last_context', '').'</i></p>';
+  $output .= '<p>Last context executed: <i>'._ec_variable_get('elysia_cron_last_context', '').'</i></p>';
   
-  if (variable_get('elysia_cron_semaphore', 0))
-    $output .= '<p><span class="warn">Global semaphore active since '.elysia_cron_date(variable_get('elysia_cron_semaphore', 0)).'</span></p>';
+  if (_ec_variable_get('elysia_cron_semaphore', 0))
+    $output .= '<p><span class="warn">Global semaphore active since '.elysia_cron_date(_ec_variable_get('elysia_cron_semaphore', 0)).'</span></p>';
   
   $running = '';
   foreach ($elysia_cron_settings_by_context as $context => $data) 
-    if (variable_get('elysia_cron_ctx_'.$context.'_running', false))
+    if (elysia_cron_is_context_running($context))
       $running .= $context.' ';
   if ($running)
     $output .= '<p>Running: <span class="warn">'.$running.'</span></p>';
     
-  $output .= '<p>Last run: '.elysia_cron_date(variable_get('elysia_cron_last_run', 0)).'</p>';
+  $output .= '<p>Last run: '.elysia_cron_date(_ec_variable_get('elysia_cron_last_run', 0)).'</p>';
   
   foreach ($elysia_cron_settings_by_context as $context => $data) {
-    $running = variable_get('elysia_cron_ctx_'.$context.'_running', false);
+    $running = elysia_cron_is_context_running($context);
     $output .= '<h3>'.$context.($running ? ' (Running since '.elysia_cron_date($running).')' : '').($data['#data']['disabled'] ? ' <span class="warn">(DISABLED)</span>' : '').'</h3>';
     $output .= '<p>Last run: '.elysia_cron_date($data['#data']['last_run']).'</p>';
     $output .= '<p>Last execution time: '.$data['#data']['last_execution_time'].'s (Shutdown: '.$data['#data']['last_shutdown_time'].'s) (Avg total: '.$data['#data']['avg_execution_time'].'s, Max total: '.$data['#data']['max_execution_time'].'s)</p>';
@@ -172,19 +458,11 @@ function elysia_cron_reset_page() {
   elysia_cron_initialize();
   
   foreach ($elysia_cron_settings as $job => $conf) {
-    variable_set('elysia_cron_'.$job.'_last_execution_time', 0);
-    variable_set('elysia_cron_'.$job.'_execution_count', 0);
-    variable_set('elysia_cron_'.$job.'_avg_execution_time', 0);
-    variable_set('elysia_cron_'.$job.'_max_execution_time', 0);
+    elysia_cron_set_job_stats($job, -1, 0, 0, 0, 0);
   }
   
-  foreach ($elysia_cron_settings_by_context as $context => $conf) { 
-    variable_set('elysia_cron_ctx_'.$context.'_last_execution_time', 0);
-    variable_set('elysia_cron_ctx_'.$context.'_execution_count', 0);
-    variable_set('elysia_cron_ctx_'.$context.'_avg_execution_time', 0);
-    variable_set('elysia_cron_ctx_'.$context.'_max_execution_time', 0);
-    variable_set('elysia_cron_ctx_'.$context.'_last_shutdown_time', 0);
-    variable_set('elysia_cron_ctx_'.$context.'_abort_count', 0);
+  foreach ($elysia_cron_settings_by_context as $context => $conf) {
+    elysia_cron_set_context_stats($context, -1, 0, 0, 0, 0, 0, 0); 
   }
   
   drupal_set_message(t('Reset done.'));
@@ -243,7 +521,7 @@ need not match the current day).</p>
 
 <h3>Examples</h3>
 <pre>
- */15 * * * : Execute job every 15 minutes
+ */15 * * * * : Execute job every 15 minutes
  0 2,14 * * *: Execute job every day at 2:00 and 14:00
  0 2 * * 1-5: Execute job at 2:00 of every working day
  0 12 1 */2 1: Execute job every 2 month, at 12:00 of first day of the month OR at every monday.
@@ -298,7 +576,7 @@ EOT
   $form['elysia_cron_disabled'] = array(
     '#title' => 'Global disable',
     '#type' => 'checkbox',
-    '#default_value' => variable_get('elysia_cron_disabled', false),
+    '#default_value' => _ec_variable_get('elysia_cron_disabled', false),
   );
 
   $form['installation'] = array(
@@ -307,34 +585,35 @@ EOT
     '#collapsible' => true,
     '#collapsed' => true,
   );
-  
+  /*
   $form['installation']['elysia_cron_runtime_replacement'] = array(
     '#title' => 'Runtime replacement',
     '#type' => 'checkbox',
-    '#default_value' => variable_get('elysia_cron_runtime_replacement', false),
+    '#default_value' => _ec_variable_get('elysia_cron_runtime_replacement', false),
     '#description' => 'With this option enabled you don\'t need to replace cron.php to install elysia_cron. '.
       'Elysia_cron will attach as the first hook of the standard cron and will start '.
       'with it (cancelling the rest of the standard call). The only drawback is a little'.
       'overhead.'
   );
+  */
   
   $form['installation']['elysia_cron_key'] = array(
     '#title' => 'Cron key',
     '#type' => 'textfield',
-    '#default_value' => variable_get('elysia_cron_key', ''),
+    '#default_value' => _ec_variable_get('elysia_cron_key', ''),
     '#description' => 'This is used to avoid external cron calling. If you set this cron will by accessible only by calling http://site/cron.php?cron_key=XXX, so you\'ll need to modify system crontab to support this (Logged user with [administer elysia_cron] permission avoid this check).',
   );
   $form['installation']['elysia_cron_allowed_hosts'] = array(
     '#title' => 'Allowed hosts',
     '#type' => 'textfield',
-    '#default_value' => variable_get('elysia_cron_allowed_hosts', ''),
+    '#default_value' => _ec_variable_get('elysia_cron_allowed_hosts', ''),
     '#description' => 'Insert a list of ip addresses separated by , that can run cron.php (Logged user with [administer elysia_cron] permission avoid this check).',
   );
   
   $form['installation']['elysia_cron_default_rule'] = array(
     '#title' => 'Default schedule rule',
     '#type' => 'textfield',
-    '#default_value' => variable_get('elysia_cron_default_rule', false),
+    '#default_value' => _ec_variable_get('elysia_cron_default_rule', false),
     '#description' => 'If you don\'t specify a rule for a process, and if it has not a module specified one, this rule will apply',
   );
   
@@ -342,12 +621,12 @@ EOT
     '#title' => t('Script'),
     '#type' => 'fieldset',
     '#collapsible' => true,
-    '#collapsed' => !variable_get('elysia_cron_script', '')
+    '#collapsed' => !_ec_variable_get('elysia_cron_script', '')
   );
   $form['elysia_cron_script_fieldset']['elysia_cron_script'] = array(
     '#type' => 'textarea',
     '#rows' => 20,
-    '#default_value' => variable_get('elysia_cron_script', ''),
+    '#default_value' => _ec_variable_get('elysia_cron_script', ''),
     '#description' => 'You can specify new cron jobs or modify existing schedules by adding lines to the script.<br>'.
       '<b>Warning</b> All rules specified in the script will OVERRIDE single job settings and contexts settings (sections below).'
   );
@@ -373,28 +652,31 @@ EOT
       '#description' => elysia_cron_description($job),
       '#type' => 'fieldset',
       '#collapsible' => true,
-      '#collapsed' => !variable_get('elysia_cron_'.$job.'_rule', '') && !variable_get('elysia_cron_'.$job.'_disabled', ''),
+      '#collapsed' => !elysia_cron_get_job_rule($job) && !elysia_cron_is_job_disabled($job),
     );
     if (!$form['single_job']['elysia_cron_'.$job]['#collapsed'])
       $form['single_job']['#collapsed'] = false; 
     
-    $form['single_job']['elysia_cron_'.$job]['elysia_cron_'.$job.'_rule'] = array(
+    //$form['single_job']['elysia_cron_'.$job]['elysia_cron_'.$job.'_rule'] = array(
+    $form['single_job']['elysia_cron_'.$job]['_elysia_cron_job_rule_'.$job] = array(
       '#title' => 'Schedule rule',
       '#type' => 'textfield',
-      '#default_value' => variable_get('elysia_cron_'.$job.'_rule', ''),
+      '#default_value' => elysia_cron_get_job_rule($job),
     );
-    $form['single_job']['elysia_cron_'.$job]['elysia_cron_'.$job.'_disabled'] = array(
+    //$form['single_job']['elysia_cron_'.$job]['elysia_cron_'.$job.'_disabled'] = array(
+    $form['single_job']['elysia_cron_'.$job]['_elysia_cron_job_disabled_'.$job] = array(
       '#title' => 'Disabled',
       '#type' => 'checkbox',
-      '#default_value' => variable_get('elysia_cron_'.$job.'_disabled', ''),
+      '#default_value' => elysia_cron_is_job_disabled($job, false),
     );
 
-    $jobcontexts['elysia_cron_'.$job.'_context'] = array(
+    //$jobcontexts['elysia_cron_'.$job.'_context'] = array(
+    $jobcontexts['_elysia_cron_job_context_'.$job] = array(
       '#title' => 'Context for '.$job,
       '#type' => 'textfield',
-      '#default_value' => variable_get('elysia_cron_'.$job.'_context', ''),
+      '#default_value' => elysia_cron_get_job_context($job),
     );
-    if (variable_get('elysia_cron_'.$job.'_context', '')) 
+    if (elysia_cron_get_job_context($job)) 
       $jobcontexts['#collapsed'] = false;
   }
   
@@ -410,12 +692,13 @@ EOT
       '#title' => 'Context '.$context,
       '#type' => 'fieldset',
     );
-    $form['contexts']['elysia_cron_ctx_'.$context]['elysia_cron_ctx_'.$context.'_disabled'] = array(
+    //$form['contexts']['elysia_cron_ctx_'.$context]['elysia_cron_ctx_'.$context.'_disabled'] = array(
+    $form['contexts']['elysia_cron_ctx_'.$context]['_elysia_cron_ctx_disabled_'.$context] = array(
       '#title' => 'Disabled',
       '#type' => 'checkbox',
-      '#default_value' => variable_get('elysia_cron_ctx_'.$context.'_disabled', ''),
+      '#default_value' => elysia_cron_is_context_disabled($context, ''),
     );
-    if (variable_get('elysia_cron_ctx_'.$context.'_disabled', ''))
+    if (elysia_cron_is_context_disabled($context))
       $form['contexts']['#collapsed'] = false;
   }
   
@@ -451,18 +734,31 @@ function elysia_cron_settings_form_submit($form_id, $form_values) {
   unset($form_values['submit'], $form_values['reset'], $form_values['form_id'], $form_values['op'], $form_values['form_token']);
 
   foreach ($form_values as $key => $value) {
-    if ($op == t('Reset to defaults')) {
-      variable_del($key);
-    }
-    else {
-      if ($value) {
-        if (is_array($value) && isset($form_values['array_filter'])) {
+    if (!preg_match('/^_elysia_cron_([^_]+_[^_]+)_(.*)$/', $key, $r)) {
+      if ($op == t('Reset to defaults') || !$value)
+        _ec_variable_del($key);
+      else {
+        if (is_array($value) && isset($form_values['array_filter']))
           $value = array_keys(array_filter($value));
-        }
-        variable_set($key, $value);
-      } else {
-        variable_del($key);
+        _ec_variable_set($key, $value);
       }
+    } else {
+      if ($op == t('Reset to defaults') || !$value) {
+        switch ($r[1]) {
+          case 'job_context': elysia_cron_reset_job_context($r[2]); break;
+          case 'job_rule': elysia_cron_reset_job_rule($r[2]); break;
+          case 'job_disabled': elysia_cron_reset_job_disabled($r[2]); break;
+          case 'context_disabled': elysia_cron_reset_context_disabled($r[2]); break;
+        }
+      } elseif ($value) {
+        switch ($r[1]) {
+          case 'job_context': elysia_cron_set_job_context($r[2], $value); break;
+          case 'job_rule': elysia_cron_set_job_rule($r[2], $value); break;
+          case 'job_disabled': elysia_cron_set_job_disabled($r[2], $value); break;
+          case 'context_disabled': elysia_cron_set_context_disabled($r[2], $value); break;
+        }
+      }
+      
     }
   }
   if ($op == t('Reset to defaults')) {
@@ -551,87 +847,79 @@ function elysia_cron_module_jobs() {
 }
 
 function elysia_cron_initialize($skipscript = false) {
+  elysia_cron_check_version_update();
+  
   global $elysia_cron_settings, $elysia_cron_settings_by_context;
   $elysia_cron_settings = array();
   $elysia_cron_settings_by_context = array();
   
   foreach (elysia_cron_module_jobs() as $job) {
-    $context = variable_get('elysia_cron_'.$job[1].'_context', 'default');
-    $rule = variable_get('elysia_cron_'.$job[1].'_rule', '');
+    $context = elysia_cron_get_job_context($job[1], 'default');
+    $rule = elysia_cron_get_job_rule($job[1]);
     if (!$rule) {
       $fn = $job[0].'_cronapi';
       if (function_exists($fn))
         $rule = $fn('rule', $job[1]);
     }
     if (!$rule)
-      $rule = variable_get('elysia_cron_default_rule', '*/15 * * * *');
+      $rule = _ec_variable_get('elysia_cron_default_rule', '*/15 * * * *');
 
     $elysia_cron_settings[$job[1]] = array(
       'context' => $context,
       'module' => $job[0],
       'rule' => $rule,
-      'disabled' => variable_get('elysia_cron_'.$job[1].'_disabled', 0),
-      'running' => variable_get('elysia_cron_'.$job[1].'_running', false),
+      'disabled' => elysia_cron_is_job_disabled($job[1]),
+      'running' => elysia_cron_is_job_running($job[1]),
     );
   }
   if (!$skipscript) {
-    $script = variable_get('elysia_cron_script', false);
+    $script = _ec_variable_get('elysia_cron_script', false);
     if ($script)
       elysia_cron_decode_script($script);
   }
   
+  ksort($elysia_cron_settings);
   foreach ($elysia_cron_settings as $job => &$conf) {
-    $conf['last_run'] = variable_get('elysia_cron_'.$job.'_last_run', 0);
-    $conf['last_execution_time'] = variable_get('elysia_cron_'.$job.'_last_execution_time', 0);
-    $conf['execution_count'] = variable_get('elysia_cron_'.$job.'_execution_count', 0);
-    $conf['avg_execution_time'] = variable_get('elysia_cron_'.$job.'_avg_execution_time', 0);
-    $conf['max_execution_time'] = variable_get('elysia_cron_'.$job.'_max_execution_time', 0);
+    $stats = elysia_cron_get_job_stats($job);
+    foreach ($stats as $sk => $sv)
+      $conf[$sk] = $sv;
     $elysia_cron_settings_by_context[$conf['context']][$job] = &$elysia_cron_settings[$job];
   }
 
   foreach ($elysia_cron_settings_by_context as $context => $data) {
-    $elysia_cron_settings_by_context[$context]['#data'] = array(
-      'disabled' => variable_get('elysia_cron_ctx_'.$context.'_disabled', false),
-      //'running' => variable_get('elysia_cron_ctx_'.$context.'_running', false),
-
-      'last_run' => variable_get('elysia_cron_ctx_'.$context.'_last_run', 0),
-      'last_execution_time' => variable_get('elysia_cron_ctx_'.$context.'_last_execution_time', 0),
-      'execution_count' => variable_get('elysia_cron_ctx_'.$context.'_execution_count', 0),
-      'avg_execution_time' => variable_get('elysia_cron_ctx_'.$context.'_avg_execution_time', 0),
-      'max_execution_time' => variable_get('elysia_cron_ctx_'.$context.'_max_execution_time', 0),
-      'last_shutdown_time' => variable_get('elysia_cron_ctx_'.$context.'_last_shutdown_time', 0),
-      'last_aborted' => variable_get('elysia_cron_ctx_'.$context.'_last_aborted', 0),
-      'abort_count' => variable_get('elysia_cron_ctx_'.$context.'_abort_count', 0),
-      'last_abort_function' => variable_get('elysia_cron_ctx_'.$context.'_last_abort_function', ''),
-    );
+    ksort($elysia_cron_settings_by_context[$context]);
+    $elysia_cron_settings_by_context[$context]['#data'] = elysia_cron_get_context_stats($context);
+    $elysia_cron_settings_by_context[$context]['#data']['disabled'] = elysia_cron_is_context_disabled($context); 
   }
 }
 
 function elysia_cron_run() {
-  $cron_key = variable_get('elysia_cron_key', '');
+  ignore_user_abort(true);
+  
+  $cron_key = _ec_variable_get('elysia_cron_key', '');
   if ($cron_key && !user_access('administer elysia_cron') && $_GET['cron_key'] != $cron_key)
     return;
-  $allowed_hosts = variable_get('elysia_cron_allowed_hosts', false);
+  $allowed_hosts = _ec_variable_get('elysia_cron_allowed_hosts', false);
   if ($allowed_hosts && !user_access('administer elysia_cron') && !in_array($_SERVER['REMOTE_ADDR'], explode(",", $allowed_hosts)))
     return;
 
-  variable_set('elysia_cron_last_run', time());
-  variable_set('cron_last', time());
+  _ec_variable_set('elysia_cron_last_run', time());
+  _ec_variable_set('cron_last', time());
     
-  if (variable_get('elysia_cron_disabled', false))
+  if (_ec_variable_get('elysia_cron_disabled', false))
     return;
 
   // Global Semaphore to avoid concurrent execution of code below
-  $semglob = variable_get('elysia_cron_semaphore', 0);
+  $semglob = _ec_variable_get('elysia_cron_semaphore', 0);
   if ($semglob && (time() - $semglob > 120)) {
     watchdog('cron', 'Global semaphore has been active for more that 2 minutes, probably stuck, reset.', WATCHDOG_ERROR);
-    variable_del('elysia_cron_semaphore');
+    _ec_variable_del('elysia_cron_semaphore');
     unset($semglob);
   }
   if ($semglob)
     return;
   
-  variable_set('elysia_cron_semaphore', time());
+  _ec_variable_set('elysia_cron_semaphore', time());
 
   if (!ini_get('safe_mode')) {
     set_time_limit(240);
@@ -640,17 +928,18 @@ function elysia_cron_run() {
   global $elysia_cron_settings, $elysia_cron_settings_by_context, $elysia_cron_current_context, $cron_completed, $cron_completed_time;
 
   $contexts = array_keys($elysia_cron_settings_by_context);
-  $context = variable_get('elysia_cron_last_context', '');
+  $context = _ec_variable_get('elysia_cron_last_context', '');
   
   $i = array_search($context, $contexts);
   if ($i === FALSE) $i = -1;
   $k = 0;
   for ($j = ($i + 1) % count($contexts); $k < count($contexts); $j = ($j + 1) % count($contexts)) {
-    $sem = variable_get('elysia_cron_ctx_'.$contexts[$j].'_running', false);
+    $sem = elysia_cron_is_context_running($contexts[$j]);
     if ($sem && (time() - $sem > 3600)) {
       watchdog('cron', t('Cron context (%context) has been running for more than an hour and is most likely stuck.', array('%context' => $contexts[$j])), WATCHDOG_ERROR);
       //$elysia_cron_settings_by_context[$contexts[$j]]['#data']['running'] = false;
-      variable_del('elysia_cron_ctx_'.$contexts[$j].'_running');
+      elysia_cron_set_context_running($contexts[$j], false);
+      //_ec_variable_del('elysia_cron_ctx_'.$contexts[$j].'_running');
       unset($sem);
       elysia_cron_execute_aborted($contexts[$j]);
     }
@@ -661,22 +950,22 @@ function elysia_cron_run() {
     $k++;
   }
   if (!$jobs || !count($jobs)) {
-    variable_del('elysia_cron_semaphore');
+    _ec_variable_del('elysia_cron_semaphore');
     return;
   }
   
   $elysia_cron_current_context = $contexts[$j];
-  variable_set('elysia_cron_last_context', $elysia_cron_current_context);
+  _ec_variable_set('elysia_cron_last_context', $elysia_cron_current_context);
   watchdog('cron', t('Cron context %context run started.', array('%context' => $elysia_cron_current_context)), WATCHDOG_NOTICE);
   
   // Register shutdown callback
   register_shutdown_function('elysia_cron_cleanup');
 
   // Lock cron semaphore
-  variable_set('elysia_cron_ctx_'.$elysia_cron_current_context.'_running', time());
-  variable_set('elysia_cron_ctx_'.$elysia_cron_current_context.'_last_run', time());
+  elysia_cron_set_context_running($elysia_cron_current_context, time());
+  elysia_cron_set_context_last_run($elysia_cron_current_context, time());
 
-  variable_del('elysia_cron_semaphore');
+  _ec_variable_del('elysia_cron_semaphore');
     
   foreach ($jobs as $job)
     elysia_cron_execute($job);
@@ -695,8 +984,8 @@ function elysia_cron_execute($job) {
   global $elysia_cron_settings;
 
   $time = time();
-  variable_set('elysia_cron_'.$job.'_last_run', $time);
-  variable_set('elysia_cron_'.$job.'_running', true);
+  elysia_cron_set_job_last_run($job, $time);
+  elysia_cron_set_job_running($job, false);
   
   try {
     if ($elysia_cron_settings[$job]['expression']) {
@@ -718,28 +1007,29 @@ function elysia_cron_execute($job) {
     //TODO Manage it
   }
 
+  $stats = elysia_cron_get_job_stats($job);
   $time = time() - $time;
-  variable_set('elysia_cron_'.$job.'_running', false);
-  variable_set('elysia_cron_'.$job.'_last_execution_time', $time);
-  $c = variable_get('elysia_cron_'.$job.'_execution_count', 0) + 1;
-  variable_set('elysia_cron_'.$job.'_execution_count', $c);
-  variable_set('elysia_cron_'.$job.'_avg_execution_time', round(((variable_get('elysia_cron_'.$job.'_avg_execution_time', 0) * ($c - 1)) + $time) / $c, 2));
-  $m = variable_get('elysia_cron_'.$job.'_max_execution_time', 0);
-  if ($time > $m)
-    variable_set('elysia_cron_'.$job.'_max_execution_time', $time);
+  elysia_cron_set_job_stats($job,
+    -1,
+    $time,
+    ($c = $stats['execution_count'] + 1),
+    round((($stats['avg_execution_time'] * ($c - 1)) + $time) / $c, 2),
+    $time > $stats['max_execution_time'] ? $time : -1
+  );
+  elysia_cron_set_job_running($job, false);
 }
 
 function elysia_cron_execute_aborted($context) {
   global $elysia_cron_settings_by_context;
 
-  variable_set('elysia_cron_ctx_'.$context.'_running', false);
-  variable_set('elysia_cron_ctx_'.$context.'_last_aborted', true);
-  variable_set('elysia_cron_ctx_'.$context.'_abort_count', variable_get('elysia_cron_ctx_'.$context.'_abort_count', 0) + 1);
+  elysia_cron_set_context_running($context, false);
+  elysia_cron_set_context_last_aborted($context, true);
+  elysia_cron_set_context_abort_count($context, elysia_cron_get_context_abort_count($context) + 1);
   
   foreach ($elysia_cron_settings_by_context[$context] as $job => $conf) if ($job != '#data') {
-    if (variable_get('elysia_cron_'.$job.'_running', false)) {
-      variable_set('elysia_cron_ctx_'.$context.'_last_abort_function', $job);
-      variable_set('elysia_cron_'.$job.'_running', false);
+    if (elysia_cron_is_job_running($job)) {
+      elysia_cron_set_context_last_abort_function($context, $job);
+      elysia_cron_set_job_running($job, false);
     }
   }
 }
@@ -755,7 +1045,7 @@ function elysia_cron_cleanup() {
   if ($cron_completed) return;
   
   // See if the semaphore is still locked.
-  if (variable_get('elysia_cron_ctx_'.$elysia_cron_current_context.'_running', FALSE)) {
+  if (elysia_cron_is_context_running($elysia_cron_current_context)) {
     watchdog('cron', t('Unexpected temination of cron context %context, aborted.', array('%context' => $elysia_cron_current_context)), WATCHDOG_WARNING);
     
     elysia_cron_execute_aborted($elysia_cron_current_context);
@@ -770,20 +1060,21 @@ function elysia_cron_completed() {
   //dprint("completed ".$elysia_cron_current_context);
   
   // Record cron time
-  variable_set('cron_last', time());
+  _ec_variable_set('cron_last', time());
   watchdog('cron', t('Cron context %context run completed.', array('%context' => $elysia_cron_current_context)), WATCHDOG_NOTICE);
   
-  $time = time() - variable_get('elysia_cron_ctx_'.$elysia_cron_current_context.'_last_run', 0); 
-  variable_set('elysia_cron_ctx_'.$elysia_cron_current_context.'_running', false);
-  variable_set('elysia_cron_ctx_'.$elysia_cron_current_context.'_last_aborted', false);
-  variable_set('elysia_cron_ctx_'.$elysia_cron_current_context.'_last_execution_time', $time);
-  $c = variable_get('elysia_cron_ctx_'.$elysia_cron_current_context.'_execution_count', 0) + 1;
-  variable_set('elysia_cron_ctx_'.$elysia_cron_current_context.'_execution_count', $c);
-  variable_set('elysia_cron_ctx_'.$elysia_cron_current_context.'_avg_execution_time', round(((variable_get('elysia_cron_ctx_'.$elysia_cron_current_context.'_avg_execution_time', 0) * ($c - 1)) + $time) / $c, 2));
-  $m = variable_get('elysia_cron_ctx_'.$elysia_cron_current_context.'_max_execution_time', 0);
-  if ($time > $m)
-    variable_set('elysia_cron_ctx_'.$elysia_cron_current_context.'_max_execution_time', $time);
-  variable_set('elysia_cron_ctx_'.$elysia_cron_current_context.'_last_shutdown_time', time() - $cron_completed_time);
+  $stats = elysia_cron_get_context_stats($elysia_cron_current_context);
+  $time = time() - $stats['last_run'];
+  elysia_cron_set_context_stats($elysia_cron_current_context,
+    -1,
+    $time, 
+    ($c = $stats['execution_count'] + 1),
+    round((($stats['avg_execution_time'] * ($c - 1)) + $time) / $c, 2),
+    $time > $stats['max_execution_time'] ? $time : -1,
+    time() - $cron_completed_time,
+    false
+  );
+  elysia_cron_set_context_running($elysia_cron_current_context, false);
 }
 
 /**
@@ -1041,8 +1332,9 @@ function theme_elysia_cron_description($job) {
     case 'googleanalytics_cron': return 'Delete cached version of ga.js/urchin.js.';
     case 'xmlsitemap_cron': return 'XML sitemap ping.';
     case 'xmlsitemap_node_cron': return 'Update XML sitemap with new nodes';   
-    case 'xmlsitemap_term_cron': return 'Update XML sitemap with new terms';   
+    case 'xmlsitemap_term_cron': return 'Update XML sitemap with new terms';
+    case 'lm_paypal_cron': return 'Remove old IPN records';
+    case 'user_import_cron': return 'Continue partial imports';    
     default: return '-';
   }
 }
-?>

@@ -71,10 +71,10 @@ There are several ways of specifying multiple date/time values in a field:
   is equivalent to "1,2,3,4,5,6"
 * The asterisk ('*') operator specifies all possible values for a field. For 
   example, an asterisk in the hour time field would be equivalent to 'every hour' 
-	(subject to matching other specified fields).
+  (subject to matching other specified fields).
 * The slash ('/') operator (called "step") can be used to skip a given number of 
   values. For example, "*/3" in the hour time field is equivalent to 
-	"0,3,6,9,12,15,18,21".
+  "0,3,6,9,12,15,18,21".
 
 3. EXAMPLES
 ---------------------------------
@@ -152,22 +152,22 @@ function module_cronapi($op, $job = NULL) {
 $op can have 3 values:
 - 'list': you should return the list of available jobs, in the form
   array(
-		array( 'job' => 'description' ),
-		array( 'job' => 'description' ),
-		...
-	)
-	'job' could be the name of a real function or an identifier used with
-	$op = 'execute' (see below).
-	Warn: 'job' should be a unique identified, even if it's not a function 
-	name.
+    array( 'job' => 'description' ),
+    array( 'job' => 'description' ),
+    ...
+  )
+  'job' could be the name of a real function or an identifier used with
+  $op = 'execute' (see below).
+  Warn: 'job' should be a unique identified, even if it's not a function 
+  name.
 - 'rule' : when called with this method, $job variable will contain the 
   job name you should return the crun rule of. 
-	The rule you return is the default/module preferred schedule rule. 
-	An administrator can always override it to fit his needs.
+  The rule you return is the default/module preferred schedule rule. 
+  An administrator can always override it to fit his needs.
 - 'execute' : when the system needs to call the job task, if no function 
   with the same of the job exists, it will call the cronapi with this
-	value and with $job filled with the name of the task to execute.
-	
+  value and with $job filled with the name of the task to execute.
+  
 Example:
 Assume your module needs 2 cron tasks: one executed every hour (process_queue)
 and one executed once a day (send_summary_mail).
@@ -175,25 +175,25 @@ You can do this with this cronapi:
 
 function module_cronapi($op, $job = NULL) {
   switch ($op) {
-		case 'list':
-			return array(
-				'module_process_queue' => 'Process queue of new data',
-				'module_send_summary_mail' => 'Send summary of data processed'
-			);
-		case 'rule':
-			if ($job == 'module_process_queue') return '0 * * * *';
-			else return '0 1 * * *';
-		case 'execute':
-			if ($job == 'module_process_queue') {
-			  ... do the job ...
-			}
-			// Just for example, module_send_summary_mail is on a separate
-			// function (see below)
-	}
+    case 'list':
+      return array(
+        'module_process_queue' => 'Process queue of new data',
+        'module_send_summary_mail' => 'Send summary of data processed'
+      );
+    case 'rule':
+      if ($job == 'module_process_queue') return '0 * * * *';
+      else return '0 1 * * *';
+    case 'execute':
+      if ($job == 'module_process_queue') {
+        ... do the job ...
+      }
+      // Just for example, module_send_summary_mail is on a separate
+      // function (see below)
+  }
 }
 
 function module_send_summary_mail() {
-	... do the job ...
+  ... do the job ...
 }
 
 HANDLING DEFAULT MODULE_CRON FUNCTION
@@ -208,21 +208,21 @@ above (considering the job an external function).
 Example:
 function module_cronapi($op, $job = NULL) {
   switch ($op) {
-		case 'list':
-			return array(
-				'module_cron' => 'Standard cron process',
-			);
-		case 'rule':
-			return '*/15 * * * *';
-	}
+    case 'list':
+      return array(
+        'module_cron' => 'Standard cron process',
+      );
+    case 'rule':
+      return '*/15 * * * *';
+  }
 }
 
 function module_cron() {
   ... 
-	// this is the standard cron hook, but with cronapi above
-	// it has a default rule (execution every 15 minutes) and
-	// a description
-	...
+  // this is the standard cron hook, but with cronapi above
+  // it has a default rule (execution every 15 minutes) and
+  // a description
+  ...
 }
 
 -----------------------------------------------------------------------------
@@ -239,8 +239,8 @@ For example, in your phptemplate theme, you can declare:
 function phptemplate_elysia_cron_description($job) {
   switch($job) {
     case 'job 1': return 'First job';
-		case 'job 2': return 'Second job'
-    default: return theme_elysia_cron_description($job)
+    case 'job 2': return 'Second job';
+    default: return theme_elysia_cron_description($job);
   }
 }
 
