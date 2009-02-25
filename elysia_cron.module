@@ -51,18 +51,18 @@ function elysia_cron_menu($maycache) {
       'path' => 'admin/build/cron/reset',
       'type' => MENU_LOCAL_TASK,
       'title' => t('Reset statistics'),
-      'weight' => 2,
       'callback' => 'elysia_cron_reset_page',
       'access' => user_access('administer elysia_cron'),
+      'weight' => 2,
     );
     $items[] = array(
       'path' => 'admin/build/cron/settings',
       'type' => MENU_LOCAL_TASK,
       'title' => t('Settings'),
-      'weight' => 3,
       'callback' => 'drupal_get_form',
       'callback arguments' => 'elysia_cron_settings_form',
       'access' => user_access('administer elysia_cron'),
+      'weight' => 3,
     );
   }
   return $items;
@@ -82,7 +82,7 @@ function elysia_cron_cron() {
   //if (_ec_variable_get('elysia_cron_runtime_replacement', false)) {
     elysia_cron_run();
   //} else
-  //  watchdog('elysia_cron', 'Standard drupal cron started (and should not!), forced termination. Please check elysia_cron installation.', WATCHDOG_ERROR);
+  //  watchdog('elysia_cron', 'Standard drupal cron started (and should not!), forced termination. Please check elysia_cron installation.', array(), WATCHDOG_ERROR);
     
   // Terminate drupal cron
   _ec_variable_del('cron_semaphore');
@@ -163,7 +163,7 @@ function elysia_cron_check_version_update() {
         if ($vn)
           _ec_variable_set($vn, unserialize($v->value));
         else
-          watchdog('cron', 'Error in update, cant convert '.$v->name.' (value: '.$v->value.')', WATCHDOG_ERROR);
+          watchdog('cron', 'Error in update, cant convert %name (value: %value)', array('%name' => $v->name, '%value' => $v->value), WATCHDOG_ERROR);
 
         _ec_variable_del($v->name);
       }
@@ -714,8 +714,9 @@ EOT
   return $form;
 }
 
-function elysia_cron_settings_form_validate($form_id, $form_values) {
+function elysia_cron_settings_form_validate($form, $form_state) {
   global $elysia_cron_settings;
+  $form_values = $form_state['values'];
   
   $script = $form_values['elysia_cron_script'];
   if ($script) {
@@ -727,7 +728,8 @@ function elysia_cron_settings_form_validate($form_id, $form_values) {
   
 }
 
-function elysia_cron_settings_form_submit($form_id, $form_values) {
+function elysia_cron_settings_form_submit($form, &$form_state) {
+  $form_values = $form_state['values'];
   $op = isset($form_values['op']) ? $form_values['op'] : '';
 
   // Exclude unnecessary elements.
@@ -912,7 +914,7 @@ function elysia_cron_run() {
   // Global Semaphore to avoid concurrent execution of code below
   $semglob = _ec_variable_get('elysia_cron_semaphore', 0);
   if ($semglob && (time() - $semglob > 120)) {
-    watchdog('cron', 'Global semaphore has been active for more that 2 minutes, probably stuck, reset.', WATCHDOG_ERROR);
+    watchdog('cron', 'Global semaphore has been active for more that 2 minutes, probably stuck, reset.', array(), WATCHDOG_ERROR);
     _ec_variable_del('elysia_cron_semaphore');
     unset($semglob);
   }
@@ -936,7 +938,7 @@ function elysia_cron_run() {
   for ($j = ($i + 1) % count($contexts); $k < count($contexts); $j = ($j + 1) % count($contexts)) {
     $sem = elysia_cron_is_context_running($contexts[$j]);
     if ($sem && (time() - $sem > 3600)) {
-      watchdog('cron', t('Cron context (%context) has been running for more than an hour and is most likely stuck.', array('%context' => $contexts[$j])), WATCHDOG_ERROR);
+      watchdog('cron', 'Cron context (%context) has been running for more than an hour and is most likely stuck.', array('%context' => $contexts[$j]), WATCHDOG_ERROR);
       //$elysia_cron_settings_by_context[$contexts[$j]]['#data']['running'] = false;
       elysia_cron_set_context_running($contexts[$j], false);
       //_ec_variable_del('elysia_cron_ctx_'.$contexts[$j].'_running');
@@ -956,7 +958,7 @@ function elysia_cron_run() {
   
   $elysia_cron_current_context = $contexts[$j];
   _ec_variable_set('elysia_cron_last_context', $elysia_cron_current_context);
-  watchdog('cron', t('Cron context %context run started.', array('%context' => $elysia_cron_current_context)), WATCHDOG_NOTICE);
+  watchdog('cron', 'Cron context %context run started.', array('%context' => $elysia_cron_current_context), WATCHDOG_NOTICE);
   
   // Register shutdown callback
   register_shutdown_function('elysia_cron_cleanup');
@@ -998,11 +1000,11 @@ function elysia_cron_execute($job) {
       if (function_exists($fn)) {
         $fn('execute', $job);
       } else {
-        watchdog('cron', 'Execution of '.$job.' failed, can\'t find function!', WATCHDOG_ERROR);
+        watchdog('cron', 'Execution of %job failed, can\'t find function!', array('%job' => $job), WATCHDOG_ERROR);
       }
     }
   } catch (Exception $e) {
-    watchdog('cron', 'Exception: '.$e, WATCHDOG_ERROR);
+    watchdog('cron', 'Exception: %e', array('%e' => $e), WATCHDOG_ERROR);
     $exception = true;
     //TODO Manage it
   }
@@ -1046,7 +1048,7 @@ function elysia_cron_cleanup() {
   
   // See if the semaphore is still locked.
   if (elysia_cron_is_context_running($elysia_cron_current_context)) {
-    watchdog('cron', t('Unexpected temination of cron context %context, aborted.', array('%context' => $elysia_cron_current_context)), WATCHDOG_WARNING);
+    watchdog('cron', 'Unexpected temination of cron context %context, aborted.', array('%context' => $elysia_cron_current_context), WATCHDOG_WARNING);
     
     elysia_cron_execute_aborted($elysia_cron_current_context);
   }
@@ -1061,7 +1063,7 @@ function elysia_cron_completed() {
   
   // Record cron time
   _ec_variable_set('cron_last', time());
-  watchdog('cron', t('Cron context %context run completed.', array('%context' => $elysia_cron_current_context)), WATCHDOG_NOTICE);
+  watchdog('cron', 'Cron context %context run completed.', array('%context' => $elysia_cron_current_context), WATCHDOG_NOTICE);
   
   $stats = elysia_cron_get_context_stats($elysia_cron_current_context);
   $time = time() - $stats['last_run'];
@@ -1144,7 +1146,7 @@ function elysia_cron_should_run($conf, $now = -1) {
     return true;
 
   if (!preg_match('/^([0-9*,\/-]+)[ ]+([0-9*,\/-]+)[ ]+([0-9*,\/-]+)[ ]+([0-9*,\/-]+)[ ]+([0-9*,\/-]+)$/', $conf['rule'], $rules)) {
-    watchdog('cron', 'Invalid rule found: ' . $conf['rule']);
+    watchdog('cron', 'Invalid rule found: %rule', array('%rule' => $conf['rule']));
     return false;
   }
   
@@ -1307,6 +1309,19 @@ function test_elysia_cron_should_run() {
 /*******************************************************************************
  * THEMING
  ******************************************************************************/
+
+/**
+ * Implementation of hook_theme().
+ */ 
+function elysia_cron_theme(){
+  return array(
+    'elysia_cron_description' => array(
+      'arguments' => array(
+        'job' => '',
+      ),
+    ),
+  );
+}
 
 /**
  * You can theme this function to provide your description for cron functions, if they do not provide one. 
