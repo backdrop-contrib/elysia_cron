@@ -225,6 +225,8 @@ function _ec_variable_get($name, $default) {
  * WARN_UPGRADE
  */
 function _ec_variable_set($name, $value) {
+  global $_ec_variables;
+
   db_lock_table('variable');
   db_query("DELETE FROM {variable} WHERE name = '%s'", $name);
   db_query("INSERT INTO {variable} (name, value) VALUES ('%s', '%s')", $name, serialize($value));
@@ -238,6 +240,8 @@ function _ec_variable_set($name, $value) {
  * WARN_UPGRADE
  */
 function _ec_variable_del($name) {
+  global $_ec_variables;
+
   db_lock_table('variable');
   db_query("DELETE FROM {variable} WHERE name = '%s'", $name);
   db_unlock_tables();
@@ -295,6 +299,14 @@ function elysia_cron_get_context_abort_count($context, $default = 0) {
 
 function elysia_cron_set_context_abort_count($context, $v) {
   return _ec_variable_set('ecc_'._ec_get_name($context).'_ac', $v);
+}
+
+function elysia_cron_get_context_last_abort_function($context, $default = '') {
+  return _ec_variable_get('ecc_'._ec_get_name($context).'_laf', $default);
+}
+
+function elysia_cron_set_context_last_abort_function($context, $job) {
+  return _ec_variable_set('ecc_'._ec_get_name($context).'_laf', $job);
 }
 
 function elysia_cron_get_context_stats($context) {
@@ -482,7 +494,7 @@ function elysia_cron_reset_page() {
   }
   
   foreach ($elysia_cron_settings_by_context as $context => $conf) {
-    elysia_cron_set_context_stats($context, -1, 0, 0, 0, 0, 0, 0); 
+    elysia_cron_set_context_stats($context, -1, 0, 0, 0, 0, 0, 0, 0, 0); 
   }
   
   drupal_set_message(t('Reset done.'));
