@@ -2,6 +2,7 @@
 // $Id$
 
 /**
+ * @file
  * ELYSIA_CRON
  * by Eric Berdondini (gotheric)
  * <eric@void.it>
@@ -31,40 +32,33 @@
  * DRUPAL HOOKS
  ******************************************************************************/
 
-function elysia_cron_menu($maycache) {
-  $items[] = array();
-  if ($maycache) {
-    $items[] = array(
-      'path' => 'admin/build/cron',
-      'title' => t('Cron Settings'),
-      'description' => t('View and manage cron table'),
-      'callback' => 'elysia_cron_admin_page',
-      'access' => user_access('administer elysia_cron'),
-    );
-    $items[] = array(
-      'path' => 'admin/build/cron/status',
-      'type' => MENU_DEFAULT_LOCAL_TASK,
-      'title' => t('Status'),
-      'weight' => 1,
-    );
-    $items[] = array(
-      'path' => 'admin/build/cron/reset',
-      'type' => MENU_LOCAL_TASK,
-      'title' => t('Reset statistics'),
-      'callback' => 'elysia_cron_reset_page',
-      'access' => user_access('administer elysia_cron'),
-      'weight' => 2,
-    );
-    $items[] = array(
-      'path' => 'admin/build/cron/settings',
-      'type' => MENU_LOCAL_TASK,
-      'title' => t('Settings'),
-      'callback' => 'drupal_get_form',
-      'callback arguments' => 'elysia_cron_settings_form',
-      'access' => user_access('administer elysia_cron'),
-      'weight' => 3,
-    );
-  }
+function elysia_cron_menu() {
+  $items['admin/build/cron'] = array(
+    'title' => 'Cron Settings',
+    'description' => 'View and manage cron table',
+    'page callback' => 'elysia_cron_admin_page',
+    'access arguments' => array('administer elysia_cron'),
+  );
+  $items['admin/build/cron/status'] = array(
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'title' => 'Status',
+    'weight' => 1,
+  );
+  $items['admin/build/cron/reset'] = array(
+    'type' => MENU_LOCAL_TASK,
+    'title' => 'Reset statistics',
+    'page callback' => 'elysia_cron_reset_page',
+    'access arguments' => array('administer elysia_cron'),
+    'weight' => 2,
+  );
+  $items['admin/build/cron/settings'] = array(
+    'type' => MENU_LOCAL_TASK,
+    'title' => 'Settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('elysia_cron_settings_form'),
+    'access arguments' => array('administer elysia_cron'),
+    'weight' => 3,
+  );
   return $items;
 }
 
@@ -111,7 +105,7 @@ function elysia_cron_cron() {
  * is the module with the smallest weight.
  * If it's not i'll set it and print a message
  */
-function elysia_cron_help($section) {
+function elysia_cron_help($section, $arg) {
   if ($section == 'admin/build/modules') {
     $min = db_result(db_query("select min(weight) from {system} where name != '%s'", 'elysia_cron'));
     $weight = db_result(db_query("select weight from {system} where name = '%s'", 'elysia_cron'));
@@ -934,7 +928,7 @@ function elysia_cron_run() {
   if ($cron_key && !user_access('administer elysia_cron') && $_GET['cron_key'] != $cron_key)
     return;
   $allowed_hosts = _ec_variable_get('elysia_cron_allowed_hosts', false);
-  if ($allowed_hosts && !user_access('administer elysia_cron') && !in_array($_SERVER['REMOTE_ADDR'], explode(",", $allowed_hosts)))
+  if ($allowed_hosts && !user_access('administer elysia_cron') && !in_array(ip_address(), explode(",", $allowed_hosts)))
     return;
 
   _ec_variable_set('elysia_cron_last_run', time());

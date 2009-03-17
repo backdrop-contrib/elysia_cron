@@ -14,7 +14,7 @@ function elysia_cron_install() {
   
   variable_set('elysia_cron_version', 20090218);
   
-  drupal_set_message('Elysia cron installed. Setup could be found at '.l(t('Settings page'), 'admin/build/cron/settings').'. Remember to replace cron.php or to enable "runtime replacement" in setup page, and to change system crontab schedule. See INSTALL.TXT for more info.');
+  drupal_set_message('Elysia cron installed. Setup could be found at '.l(t('Settings page'), 'admin/build/cron/settings').'. See INSTALL.TXT for more info.');
 }
 
 /**
