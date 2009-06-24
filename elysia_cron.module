@@ -21,7 +21,6 @@
  *   shutdown hook).
  * 
  * TODO Roadmap
- * - force job launch
  * - "set as terminated" on running jobs/contexts
  * - confirm page for "reset statistics"
  * - better internationalization
@@ -58,6 +57,11 @@ function elysia_cron_menu() {
     'page arguments' => array('elysia_cron_settings_form'),
     'access arguments' => array('administer elysia_cron'),
     'weight' => 3,
+  );
+  $items['admin/build/cron/execute'] = array(
+    'type' => MENU_CALLBACK,
+    'page callback' => 'elysia_cron_execute_page',
+    'access arguments' => array('administer elysia_cron'),
   );
   return $items;
 }
@@ -123,7 +127,7 @@ function elysia_cron_help($section, $arg) {
     $min = db_result(db_query("select min(weight) from {system} where name != '%s'", 'elysia_cron'));
     $weight = db_result(db_query("select weight from {system} where name = '%s'", 'elysia_cron'));
     if ($min <= $weight) {
-      drupal_set_message('Elysia cron module is not the module with the smallest weight (and it must be). Updating weight...');
+      drupal_set_message(t('Elysia cron module is not the module with the smallest weight (and it must be). Updating weight...'));
       db_query("update {system} set weight = %d where name = '%s'", $min - 1, 'elysia_cron');
     }
   }
@@ -480,7 +484,9 @@ function elysia_cron_admin_page() {
     foreach ($data as $job => $conf) if ($job != '#data') {
       $rows[] = array(
         ($conf['disabled'] ? '<strike>'.$job.'</strike>' : (!$conf['running'] ? '<b>'.$job.'</b>' : '<b><u>'.$job.'</u></b> <small title="'.t('Running').'">(R)</small>')).(elysia_cron_should_run($conf) ? ' <small title="'.t('Waiting for execution').'">(w)</small>' : ''), 
-        array('data' => '<i>'.elysia_cron_description($job).'</i>','colspan' => 4)
+        array('data' => '<i>'.elysia_cron_description($job).'</i> '.
+          '['.l(t('run'), 'admin/build/cron/execute/'.$job, array('attributes' => array('onclick' => 'return confirm("'.t('Force execution of !job?', array('!job' => $job)).'");'))).']',
+        'colspan' => 4)
       );
       $rows[] = array(
         $conf['rule'], elysia_cron_date($conf['last_run']), $conf['last_execution_time'].'s',
@@ -840,6 +846,54 @@ function elysia_cron_date($timestamp) {
   return date(variable_get('date_format_short', 'm/d/Y - H:i'), $timestamp); 
 }
 
+function elysia_cron_execute_page($job = false) {
+  global $cron_completed, $cron_executing_job;
+  
+  if (!$job) {
+    drupal_set_message(t('No job specified'), 'error');
+    drupal_goto('admin/build/cron');
+  }
+  
+  $running = false;
+  if (elysia_cron_is_job_running($job, false)) {
+    if (time() - elysia_cron_get_job_last_run($job, 0) > _ec_variable_get('elysia_cron_stuck_time', 3600))
+      drupal_set_message(t('Job already running, but is probably stuck, so i consider it as terminated'));
+    else {
+      drupal_set_message(t('Job already running'));
+      $running = true;
+    }
+  }
+  
+  if (!$running) {
+    $cron_completed = false;
+    $cron_executing_job = $job;
+    
+    // Register shutdown callback
+    register_shutdown_function('elysia_cron_execute_page_cleanup');
+
+    elysia_cron_execute($job);
+    
+    $cron_completed = true;
+    
+    drupal_set_message(t('Job executed'));
+  }
+
+  drupal_goto('admin/build/cron');
+}
+
+function elysia_cron_execute_page_cleanup() {
+  global $cron_completed, $cron_executing_job;
+  
+  if ($cron_completed) return;
+  
+  // See if the semaphore is still locked.
+  if (elysia_cron_is_job_running($cron_executing_job, false)) {
+    watchdog('cron', t('Unexpected temination of cron job %job manually started, aborted.', array('%job' => $cron_executing_job)), WATCHDOG_WARNING);
+    
+    elysia_cron_set_job_running($cron_executing_job, false);
+  }
+}
+
 /*******************************************************************************
  * INTERNAL
  ******************************************************************************/
@@ -1037,10 +1091,22 @@ function elysia_cron_run($manual_run = false) {
   elysia_cron_set_context_last_run($elysia_cron_current_context, time());
 
   _ec_variable_del('elysia_cron_semaphore');
+
+  foreach ($jobs as $job) {
+    $job_running = false;
+    if (elysia_cron_is_job_running($job, false)) {
+      if (time() - elysia_cron_get_job_last_run($job, 0) > _ec_variable_get('elysia_cron_stuck_time', 3600))
+        watchdog('cron', 'Job %job is already running, but is probably stuck, so i consider it as terminated', array('%job' => $job), WATCHDOG_NOTICE);
+      else {
+        watchdog('cron', 'Job %job is already running', array('%job' => $job), WATCHDOG_NOTICE);
+        $job_running = true;
+      }
+    }
     
-  foreach ($jobs as $job)
-    elysia_cron_execute($job);
-  
+    if (!$job_running)
+      elysia_cron_execute($job);
+  }
+
   $cron_completed = true;
   $cron_completed_time = time();
   
