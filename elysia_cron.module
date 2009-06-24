@@ -643,6 +643,24 @@ EOT
     '#description' => 'If you don\'t specify a rule for a process, and if it has not a module specified one, this rule will apply',
   );
   
+  $form['installation']['elysia_cron_stuck_time'] = array(
+    '#title' => 'Stuck time',
+    '#type' => 'textfield',
+    '#default_value' => _ec_variable_get('elysia_cron_stuck_time', 3600),
+    '#description' => 'How much seconds the process should wait to consider the job as stuck',
+  );
+
+  $form['installation']['elysia_cron_debug_messages'] = array(
+    '#title' => 'Debug',
+    '#type' => 'select',
+    '#default_value' => _ec_variable_get('elysia_cron_debug_messages', 0),
+    '#options' => array(
+      0 => 'Disabled',
+      1 => 'Enabled',
+    ),
+    '#description' => 'Enable extended logging (in watchdog)',
+  );
+  
   $form['elysia_cron_script_fieldset'] = array(
     '#title' => t('Script'),
     '#type' => 'fieldset',
@@ -961,10 +979,11 @@ function elysia_cron_run() {
   $i = array_search($context, $contexts);
   if ($i === FALSE) $i = -1;
   $k = 0;
+  $stuck_time = _ec_variable_get('elysia_cron_stuck_time', 3600);
   for ($j = ($i + 1) % count($contexts); $k < count($contexts); $j = ($j + 1) % count($contexts)) {
     $sem = elysia_cron_is_context_running($contexts[$j]);
-    if ($sem && (time() - $sem > 3600)) {
-      watchdog('cron', 'Cron context (%context) has been running for more than an hour and is most likely stuck.', array('%context' => $contexts[$j]), WATCHDOG_ERROR);
+    if ($sem && (time() - $sem > $stuck_time)) {
+      watchdog('cron', 'Cron context (%context) has been running for more than an %stuck_time secs and is most likely stuck.', array('%context' => $contexts[$j], '%stuck_time' => $stuck_time), WATCHDOG_ERROR);
       //$elysia_cron_settings_by_context[$contexts[$j]]['#data']['running'] = false;
       elysia_cron_set_context_running($contexts[$j], false);
       //_ec_variable_del('elysia_cron_ctx_'.$contexts[$j].'_running');
@@ -984,7 +1003,9 @@ function elysia_cron_run() {
   
   $elysia_cron_current_context = $contexts[$j];
   _ec_variable_set('elysia_cron_last_context', $elysia_cron_current_context);
-  watchdog('cron', 'Cron context %context run started.', array('%context' => $elysia_cron_current_context), WATCHDOG_NOTICE);
+
+  if (_ec_variable_get('elysia_cron_debug_messages', 0))
+    watchdog('cron', 'Cron context %context run started.', array('%context' => $elysia_cron_current_context), WATCHDOG_NOTICE);
   
   // Register shutdown callback
   register_shutdown_function('elysia_cron_cleanup');
@@ -1089,7 +1110,9 @@ function elysia_cron_completed() {
   
   // Record cron time
   _ec_variable_set('cron_last', time());
-  watchdog('cron', 'Cron context %context run completed.', array('%context' => $elysia_cron_current_context), WATCHDOG_NOTICE);
+  
+  if (_ec_variable_get('elysia_cron_debug_messages', 0))
+    watchdog('cron', 'Cron context %context run completed.', array('%context' => $elysia_cron_current_context), WATCHDOG_NOTICE);
   
   $stats = elysia_cron_get_context_stats($elysia_cron_current_context);
   $time = time() - $stats['last_run'];
