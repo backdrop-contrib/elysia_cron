@@ -81,6 +81,9 @@ function elysia_cron_init() {
  */
 function elysia_cron_cron() {
   global $conf;
+
+  // If the path is 'admin/*' this is a manual cron run (probably by admin/logs/status
+  $manual_run = (arg(0) == 'admin'); 
   
   // Some modules (feedapi, ipaper...) uses the internal "cron_semaphore" variable to detect
   // start time of cron process. I'll set this only in memory for that purpose.
@@ -89,7 +92,7 @@ function elysia_cron_cron() {
   $conf['cron_semaphore'] = time();
   
   //if (_ec_variable_get('elysia_cron_runtime_replacement', false)) {
-    elysia_cron_run();
+    $result = elysia_cron_run($manual_run);
   //} else
   //  watchdog('elysia_cron', 'Standard drupal cron started (and should not!), forced termination. Please check elysia_cron installation.', WATCHDOG_ERROR);
     
@@ -97,6 +100,16 @@ function elysia_cron_cron() {
   _ec_variable_del('cron_semaphore');
   $conf['cron_semaphore'] = false;
   
+  if ($manual_run) {
+    if ($result) {
+      drupal_set_message(t('Cron ran successfully'));
+    }
+    else {
+      drupal_set_message(t('Cron run failed, disabled or nothing to do'));
+    }
+    drupal_goto('admin/reports/status');
+  }
+
   exit();
 }
 
@@ -187,6 +200,14 @@ function elysia_cron_check_version_update() {
  * SETTINGS API
  ******************************************************************************/
 
+function _ec_variable_init() {
+  global $_ec_variables;
+  $_ec_variables = array();
+  $result = db_query("select * from {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%'");
+  while ($variable = db_fetch_object($result))
+    $_ec_variables[$variable->name] = unserialize($variable->value);
+}
+
 /**
  * A substitute for variable_get to avoid cache management
  * WARN_UPGRADE
@@ -195,13 +216,8 @@ function _ec_variable_get($name, $default) {
   //return variable_get($name, $default);
   
   global $_ec_variables;
-  
-  if (!is_array($_ec_variables)) {
-    $_ec_variables = array();
-    $result = db_query("select * from {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%'");
-    while ($variable = db_fetch_object($result))
-      $_ec_variables[$variable->name] = unserialize($variable->value);
-  }
+  if (!is_array($_ec_variables)) 
+    _ec_variable_init();
   
   // If there is a $GLOBALS['original_conf'] = $conf; at the end of  settings.php i consider it. 
   global $original_conf;
@@ -220,6 +236,8 @@ function _ec_variable_get($name, $default) {
  */
 function _ec_variable_set($name, $value) {
   global $_ec_variables;
+  if (!is_array($_ec_variables)) 
+    _ec_variable_init();
 
   db_lock_table('variable');
   db_query("DELETE FROM {variable} WHERE name = '%s'", $name);
@@ -235,6 +253,8 @@ function _ec_variable_set($name, $value) {
  */
 function _ec_variable_del($name) {
   global $_ec_variables;
+  if (!is_array($_ec_variables)) 
+    _ec_variable_init();
 
   db_lock_table('variable');
   db_query("DELETE FROM {variable} WHERE name = '%s'", $name);
@@ -939,15 +959,17 @@ function elysia_cron_initialize($skipscript = false) {
   }
 }
 
-function elysia_cron_run() {
+function elysia_cron_run($manual_run = false) {
   ignore_user_abort(true);
-  
-  $cron_key = _ec_variable_get('elysia_cron_key', '');
-  if ($cron_key && !user_access('administer elysia_cron') && $_GET['cron_key'] != $cron_key)
-    return;
-  $allowed_hosts = _ec_variable_get('elysia_cron_allowed_hosts', false);
-  if ($allowed_hosts && !user_access('administer elysia_cron') && !in_array(ip_address(), explode(",", $allowed_hosts)))
-    return;
+
+  if (!$manual_run) {
+    $cron_key = _ec_variable_get('elysia_cron_key', '');
+    if ($cron_key && !user_access('administer elysia_cron') && $_GET['cron_key'] != $cron_key)
+      return;
+    $allowed_hosts = _ec_variable_get('elysia_cron_allowed_hosts', false);
+    if ($allowed_hosts && !user_access('administer elysia_cron') && !in_array(ip_address(), explode(",", $allowed_hosts)))
+      return;
+  }
 
   _ec_variable_set('elysia_cron_last_run', time());
   _ec_variable_set('cron_last', time());
