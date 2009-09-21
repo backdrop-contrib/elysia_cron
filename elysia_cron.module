@@ -125,8 +125,8 @@ function elysia_cron_help($section, $arg) {
  */
 function elysia_cron_check_version_update() {
   $ver = _ec_variable_get('elysia_cron_version', 0);
-  if (!$ver) {
-    
+  if (!$ver || $ver < 20090218) {
+
     $unchanged = array(
       'elysia_cron_last_context', 
       'elysia_cron_last_run',
@@ -181,6 +181,9 @@ function elysia_cron_check_version_update() {
     
     _ec_variable_set('elysia_cron_version', 20090218);
   }
+  elseif ($ver < 20090920) {
+    _ec_variable_set('elysia_cron_version', 20090920);
+  }
 }
 
 /*******************************************************************************
@@ -190,7 +193,7 @@ function elysia_cron_check_version_update() {
 function _ec_variable_init() {
   global $_ec_variables;
   $_ec_variables = array();
-  $result = db_query("select * from {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%'");
+  $result = db_query("select * from {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%' or name = 'cron_key'");
   while ($variable = db_fetch_object($result))
     $_ec_variables[$variable->name] = unserialize($variable->value);
 }
@@ -636,10 +639,10 @@ EOT
     '#collapsed' => true,
   );
   
-  $form['installation']['elysia_cron_key'] = array(
+  $form['installation']['cron_key'] = array(
     '#title' => t('Cron key'),
     '#type' => 'textfield',
-    '#default_value' => _ec_variable_get('elysia_cron_key', ''),
+    '#default_value' => _ec_variable_get('cron_key', ''),
     '#description' => t('This is used to avoid external cron calling. If you set this cron will by accessible only by calling http://site/cron.php?cron_key=XXX, so you\'ll need to modify system crontab to support this (Logged user with [administer elysia_cron] permission avoid this check).'),
   );
   $form['installation']['elysia_cron_allowed_hosts'] = array(
@@ -698,6 +701,11 @@ EOT
   
   $form['single_job'] = array(
     '#title' => t('Single job settings'),
+    '#description' => 
+      '<b>'.t('Disabled').'</b>: '.t('Flag this to disable job execution').'<br />'.
+      '<b>'.t('Schedule rule').'</b>: '.t('Timing rule for the job. Leave empty to use default rule (shown after the field in parenthesis)').'<br />'.
+      '<b>'.t('Weight').'</b>: '.t('Use this to specify execution order: low weights are executed before high weights. Default value shown in parenthesis').'<br />'.
+      '<b>'.t('Context').'</b>: '.t('Specify a context for the job (create the context if not exists)').'<br /><br />',
     '#type' => 'fieldset',
     '#collapsible' => true,
     '#collapsed' => true,
@@ -897,12 +905,16 @@ function elysia_cron_settings_form_submit($form, &$form_state) {
 
   foreach ($form_values as $key => $value) {
     if (!preg_match('/^_elysia_cron_([^_]+_[^_]+)_(.*)$/', $key, $r)) {
-      if ($op == t('Reset to defaults') || !$value)
+      if ($op == t('Reset to defaults') || !$value) {
         _ec_variable_del($key);
-      else {
+        if ($key == 'cron_key')
+          variable_del($key);
+      } else {
         if (is_array($value) && isset($form_values['array_filter']))
           $value = array_keys(array_filter($value));
         _ec_variable_set($key, $value);
+        if ($key == 'cron_key')
+          variable_set($key, $value);
       }
     } else {
       if ($op == t('Reset to defaults') || !$value) {
@@ -1136,7 +1148,7 @@ function elysia_cron_run($manual_run = false) {
   ignore_user_abort(true);
 
   if (!$manual_run) {
-    $cron_key = _ec_variable_get('elysia_cron_key', '');
+    $cron_key = _ec_variable_get('cron_key', '');
     if ($cron_key && !user_access('administer elysia_cron') && $_GET['cron_key'] != $cron_key)
       return;
     $allowed_hosts = _ec_variable_get('elysia_cron_allowed_hosts', false);

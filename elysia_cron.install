@@ -37,3 +37,11 @@ function elysia_cron_uninstall() {
       
   drupal_set_message('Elysia cron uninstalled.');
 }
+
+function elysia_cron_update_1() {
+  $cron_key = variable_get('elysia_cron_key', false);
+  if ($cron_key)
+    variable_set('cron_key', $cron_key);
+  variable_del('elysia_cron_key');
+  return array();
+}
