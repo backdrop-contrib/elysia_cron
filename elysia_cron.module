@@ -904,6 +904,7 @@ function elysia_cron_settings_form_submit($form, &$form_state) {
   unset($form_values['submit'], $form_values['reset'], $form_values['form_id'], $form_values['op'], $form_values['form_token']);
 
   foreach ($form_values as $key => $value) {
+    $value = trim($value);
     if (!preg_match('/^_elysia_cron_([^_]+_[^_]+)_(.*)$/', $key, $r)) {
       if ($op == t('Reset to defaults') || !$value) {
         _ec_variable_del($key);
