@@ -87,6 +87,13 @@ function elysia_cron_cron() {
   
   $result = elysia_cron_run($manual_run);
   
+  // I must check for cron_semaphore and delete it if set (is not always deleted by elysia_cron_run, and this situation is only when called by drupal cron, so a check here is right)
+  if (variable_get('cron_semaphore', false)) {
+    global $conf;
+    _ec_variable_del('cron_semaphore');
+    $conf['cron_semaphore'] = false;
+  }
+  
   if ($manual_run) {
     if ($result) {
       drupal_set_message(t('Cron ran successfully'));
