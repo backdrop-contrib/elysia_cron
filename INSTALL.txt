@@ -1,30 +1,47 @@
 After enable of elysia_cron module from drupal module administration you should 
 change the server crontab to launch drupal cron process each minute.
+
+
+IT'S NOT MANDATORY: you can leave default drupal cron rule - a run on 45 minutes 
+after every hour - but that way if you have job rules with an exact time for
+execution, that rules won't work as expected. And you won't be able to  execute 
+a process more than once an hour.
+So, if you want to use the full power of elysia cron, it's suggested that you
+change your crontab. 
+
+
 To do this refer to the section "Configuring cron jobs" of drupal documentation
 (http://drupal.org/cron), the only difference is that the schedule rule must 
 be "* * * * *".
 Example:
 * * * * * /usr/bin/wget -O - -q http://example.com/cron.php
 
+
+TO ENABLE CRON KEY SECURITY:
 If you want to enable cron-key security you should also add the choosen
 cron key (from elysia_cron setup) to the call.
 Example:
 * * * * * /usr/bin/wget -O - -q http://example.com/cron.php?cron_key=XYZ
 
+
+PERMISSIONS:
 You can also give 'administer elysia_cron' permission to all user roles that 
 needs to administer cron jobs. 
 
+
 Nothing more.
 By default elysia_cron will run all standard cron jobs sequentially (in a single
-channel) each 15 minutes.
+channel) at 45 minutes after every hour.
 You can change this behavious with elysia_cron setup.
 
 To access elysia_cron setup, and change the scheduling of your jobs or view
 execution stats, go to page admin/build/cron
 
+
 Note: to better see warnings on administration page you should consider adding 
 a rule for "warn" class to theme CSS stylesheet, like this one:
 .warn { color: red; font-weight: bold; }
+
 
 ADVANCED
 ---------
@@ -43,3 +60,6 @@ To avoid the replacement of cron.php you can also call directly elysia cron's
 cron.php in crontab. 
 Example:
 * * * * * /usr/bin/wget -O - -q http://example.com/sites/all/modules/elysia_cron/cron.php
+
+Note: This example works if you installed elysia_cron in "sites/all/modules" 
+dir. If you installed elsewhere use that path instead.

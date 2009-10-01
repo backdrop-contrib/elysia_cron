@@ -1097,7 +1097,7 @@ function elysia_cron_initialize($skipscript = false) {
     if (!$defrule) {
       $defrule = elysia_cron_get_context_rule($context);
       if (!$defrule)
-        $defrule = _ec_variable_get('elysia_cron_default_rule', '*/15 * * * *');
+        $defrule = _ec_variable_get('elysia_cron_default_rule', '45 * * * *');
     }
 
     $rule = elysia_cron_get_job_rule($job[1]);

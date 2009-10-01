@@ -6,6 +6,8 @@ Features:
 - crontab-like scheduling configuration of each job.
 - grouping of jobs in channels (parallel lines of execution).
 - you can disable all jobs, an entire channel or a single job via configuration.
+- force execution of a single cron job on demand
+- change the priority/order of job execution
 - time statistics of each job and of the whole channel.
 - modules can define extra cron tasks, each one with own default cron-rules
   (site administrators can override them by configuration).
@@ -14,6 +16,8 @@ Features:
 - ensure all shutdown hook functions launched by cron jobs are launched inside
   cron protection (ex: search_cron() will launch search_update_totals() in a
   shutdown hook).
+
+For installation instructions read INSTALL.TXT
 
 -----------------------------------------------------------------------------
 CHANNELS
