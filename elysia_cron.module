@@ -506,7 +506,7 @@ function elysia_cron_admin_page() {
         'colspan' => 4)
       );
       $rows[] = array(
-        $conf['rule'], elysia_cron_date($conf['last_run']), $conf['last_execution_time'].'s',
+        $conf['rule'] . ($conf['weight'] ? ' <small>('.t('Weight').': '.$conf['weight'] .')</small>' : ''), elysia_cron_date($conf['last_run']), $conf['last_execution_time'].'s',
         $conf['execution_count'], $conf['avg_execution_time'].'s / '.$conf['max_execution_time'].'s'
        
       );
@@ -985,6 +985,7 @@ function elysia_cron_execute_page($job = false) {
     // Register shutdown callback
     register_shutdown_function('elysia_cron_execute_page_cleanup');
 
+    elysia_cron_initialize();
     elysia_cron_execute($job);
     
     $cron_completed = true;
@@ -1117,7 +1118,7 @@ function elysia_cron_initialize($skipscript = false) {
       'module' => $job[0],
       'rule' => $rule,
       'default_rule' => $defrule,
-      'weight' => elysia_cron_get_job_weight($job[1], $default_weight),
+      'weight' => elysia_cron_get_job_weight($job[1], $defweight),
       'default_weight' => $defweight,
       'disabled' => elysia_cron_is_job_disabled($job[1]),
       'running' => elysia_cron_is_job_running($job[1]),
@@ -1276,7 +1277,7 @@ function elysia_cron_execute($job) {
   try {
     if ($elysia_cron_settings[$job]['expression']) {
       eval($elysia_cron_settings[$job]['expression']);
-    } if (function_exists($job)) {
+    } elseif (function_exists($job)) {
       //sleep(5);
       $job();
     } else {
