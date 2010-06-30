@@ -6,7 +6,7 @@
  * Handles incoming requests to fire off regularly-scheduled tasks (cron jobs).
  */
 
-if (!file_exists('includes/bootstrap.inc') && preg_match('@^(.*)[\\\\/]sites[\\\\/][^\\\\/]+[\\\\/]modules[\\\\/]elysia(_cron)?$@', getcwd(), $r))
+if (!file_exists('includes/bootstrap.inc') && preg_match('@^(.*)[\\\\/]sites[\\\\/][^\\\\/]+[\\\\/]modules[\\\\/]([^\\\\/]+[\\\\/])?elysia(_cron)?$@', getcwd(), $r))
   chdir($r[1]);
 
 include_once './includes/bootstrap.inc';
