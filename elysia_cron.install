@@ -1,5 +1,4 @@
 <?php
-// $Id$
 
 function elysia_cron_schema() {
   $schema['elysia_cron'] = array(
