@@ -1,4 +1,5 @@
 <?php
+// $Id: cron.php,v 1.1 2008/06/25 15:38:55 gotheric Exp $
 
 /**
  * ELYSIA_CRON
@@ -37,7 +38,7 @@ $GLOBALS['elysia_cron_default_rules'] = array(
 );
 
 function elysia_cron_version() {
-  return 20110222;
+  return 20110323;
 }
 
 /*******************************************************************************
@@ -76,6 +77,11 @@ function elysia_cron_menu($_dcr_maycache = true) {
     'type' => MENU_CALLBACK,
     'page callback' => 'elysia_cron_execute_page',
     'access arguments' => array('administer elysia_cron'),
+  );
+  $items['admin/build/cron/ping'] = array(
+    'type' => MENU_CALLBACK,
+    'page callback' => 'elysia_cron_ping_page',
+    'access arguments' => TRUE,
   );
   return _dcf_hook_menu($items, $_dcr_maycache);
 }
@@ -253,6 +259,30 @@ function _ec_variable_del($name) {
   }
   
   unset($_ec_variables[$name]);
+}
+
+if (VERSION < 7) {
+  function _ec_semaphore_get($name = 'elysia_cron_semaphore', $timeout = 120) {
+    if (function_exists('elysia_cron_semaphore_get_alternative'))
+      return elysia_cron_semaphore_get_alternative($name, $timeout);
+      
+    db_lock_table('variable');
+    $semglob = db_result(db_query("select value from {variable} where name = '%s'", 'elysia_cron_semaphore'));
+    $semglob = $semglob ? unserialize($semglob) : false;
+    
+    $stuck = $semglob && (time() - $semglob > $time);
+    if ($stuck || !$semglob) {
+      db_query("DELETE FROM {variable} WHERE name = '%s'", 'elysia_cron_semaphore');
+      db_query("INSERT INTO {variable} (name, value) VALUES ('%s', '%s')", 'elysia_cron_semaphore', serialize(time()));
+      $semglob = false; // We must return TRUE
+    }
+    db_unlock_tables();
+    
+    if ($stuck)
+      _dco_watchdog('cron', 'Global semaphore has been active for more than 2 minutes, probably stuck, reset.', array(), WATCHDOG_ERROR);
+      
+    return !$semglob;
+  }
 }
 
 function _ec_get_name($name) {
@@ -797,7 +827,7 @@ EOT
     '#title' => t('Stuck time'),
     '#type' => 'textfield',
     '#default_value' => _ec_variable_get('elysia_cron_stuck_time', 3600),
-    '#description' => t('How much seconds the process should wait to consider the job as stuck (so the channel can run again)'),
+    '#description' => t('How many seconds the process should wait to consider the job as stuck (so the channel can run again)'),
   );
 
   $form['installation']['elysia_cron_debug_messages'] = array(
@@ -823,6 +853,21 @@ EOT
     '#default_value' => $default_ruless,
     '#description' => t('You can put here standard rules used in your system, each one with its own caption. Put each rule in a separate line, in the form "caption = rule". For example: <i>"every 15 minutes = */15 * * * *"</i>.'),
   );
+  
+  $form['installation']['elysia_cron_alert_fieldset'] = array(
+    '#title' => t('External cron tracking'),
+    '#type' => 'fieldset',
+    '#collapsible' => true,
+    '#collapsed' => true,
+    '#description' => t('This lets you use an external tracking system like <a href="http://www.host-tracker.com/">Host Tracker</a> to be used to monitor the health of cron on your site. Point the tracking service to <a href="!cron-ping-url">!cron-ping-url</a>. If Elysia cron has been called within the time interval specified below, the ping page will return HTTP 200.  If not, the ping page will throw a 404 (page not found).', array('!cron-ping-url' => url('admin/build/cron/ping')))
+  );
+  $form['installation']['elysia_cron_alert_fieldset']['elysia_cron_alert_interval'] = array(
+    '#title' => t('Lapse interval (minutes)'),
+    '#type' => 'textfield',
+    '#size' => 20,
+    '#default_value' => _ec_variable_get('elysia_cron_alert_interval', 60),
+    '#description' => t('Specify the number of minutes to allow to lapse before the cron ping page returns a 404 (page not found).'),
+  );  
   
   $form['elysia_cron_script_fieldset'] = array(
     '#title' => t('Script'),
@@ -1366,9 +1411,9 @@ function elysia_cron_initialize($skipscript = false) {
 }
 
 function _elysia_cron_sort($a, $b) {
-  if ($a['weight'] == $b['weight'])
-    return strcmp($a['key'], $b['key']);
-  return $a['weight'] - $b['weight'];
+  if ((isset($a['weight']) ? $a['weight'] : 0) == (isset($b['weight']) ? $b['weight'] : 0))
+    return strcmp((isset($a['key']) ? $a['key'] : ''), (isset($b['key']) ? $b['key'] : ''));
+  return (isset($a['weight']) ? $a['weight'] : 0) - (isset($b['weight']) ? $b['weight'] : 0);
 }
 
 function elysia_cron_run($manual_run = false) {
@@ -1392,7 +1437,7 @@ function elysia_cron_run($manual_run = false) {
   // Check for CRON_KEY or ALLOWED_HOSTS
   if (!$manual_run) {
     $cron_key = _ec_variable_get('cron_key', '');
-    if ($cron_key && !user_access('administer elysia_cron') && $_GET['cron_key'] != $cron_key)
+    if ($cron_key && !user_access('administer elysia_cron') && (empty($_GET['cron_key']) || $_GET['cron_key'] != $cron_key))
       return;
     $allowed_hosts = _ec_variable_get('elysia_cron_allowed_hosts', false);
     if ($allowed_hosts && !user_access('administer elysia_cron') && !in_array(ip_address(), explode(",", $allowed_hosts)))
@@ -1409,17 +1454,8 @@ function elysia_cron_run($manual_run = false) {
       $execute = false;
     }
   } else {
-    // Global Semaphore to avoid concurrent execution of code below
-    $semglob = _ec_variable_get('elysia_cron_semaphore', 0);
-    if ($semglob && (time() - $semglob > 120)) {
-      _dco_watchdog('cron', 'Global semaphore has been active for more that 2 minutes, probably stuck, reset.', array(), WATCHDOG_ERROR);
-      _ec_variable_del('elysia_cron_semaphore');
-      unset($semglob);
-    }
-    if ($semglob)
-      $execute = false;
-    else
-      _ec_variable_set('elysia_cron_semaphore', time());
+    // Global Semaphore to avoid concurrent execution of cron preparation code
+    $execute = _ec_semaphore_get('elysia_cron_semaphore', 120);
   }
   
   // Force the current user to anonymous to ensure consistent permissions on
@@ -1474,14 +1510,8 @@ function elysia_cron_run($manual_run = false) {
     }
     
     if ($jobs && count($jobs)) {
-      if (VERSION < 7) {
-        // Some modules (feedapi, ipaper...) uses the internal "cron_semaphore" variable to detect
-        // start time of cron process. I'll set this only in memory for that purpose.
-        // (In normal drupal cron execution that is done by a variable_set just before this call, 
-        // but i need to set this manually if drupal cron is bypassed)
-        $conf['cron_semaphore'] = time();
-      }
-      
+      // There are jobs ready to be executed
+
       $elysia_cron_current_channel = $channels[$j];
       elysia_cron_set_last_channel($elysia_cron_current_channel);
     
@@ -1491,16 +1521,22 @@ function elysia_cron_run($manual_run = false) {
       // Register shutdown callback
       register_shutdown_function('elysia_cron_cleanup');
     
-      // Lock cron semaphore
       elysia_cron_set($elysia_cron_current_channel, true, array(
         'running' => time(),
         'last_run' => time(),
       ));
     
+      // Now I can unlock cron semaphore      
       if (VERSION < 7) {
         _ec_variable_del('elysia_cron_semaphore');
+        
+        // Some modules (feedapi, ipaper...) uses the internal "cron_semaphore" variable to detect
+        // start time of cron process. I'll set this only in memory for that purpose.
+        // (In normal drupal cron execution that is done by a variable_set just before this call, 
+        // but i need to set this manually if drupal cron is bypassed)
+        $conf['cron_semaphore'] = time();
       }
-    
+      
       foreach ($jobs as $job) {
         $job_running = false;
         if (elysia_cron_is_job_running($job)) {
@@ -1524,6 +1560,11 @@ function elysia_cron_run($manual_run = false) {
       register_shutdown_function('elysia_cron_completed');
       
     } else {
+      // No jobs should be executed, i must unlock cron semaphore
+      if (VERSION < 7) {
+        _ec_variable_del('elysia_cron_semaphore');
+      }
+
       if (_ec_variable_get('elysia_cron_debug_messages', 0))
         _dco_watchdog('cron', 'No channels ready to be executed, skipping cron.', array(), WATCHDOG_NOTICE);
     }
@@ -1863,41 +1904,49 @@ function test_elysia_cron_should_run() {
   dprint("21.".(false == elysia_cron_should_run(array('rule' => '29,59 23 * * 0', 'last_run' => mktime(23, 28, 0, 1, 5, 2008)), mktime(23, 59, 0, 1, 5, 2008))));
   dprint("22.".(true  == elysia_cron_should_run(array('rule' => '29,59 23 * * 0', 'last_run' => mktime(23, 28, 0, 1, 5, 2008)), mktime(23, 29, 0, 1, 6, 2008))));
 
-  dprint("23.".(false  == elysia_cron_should_run(array('rule' => '29,59 23 * * 5', 'last_run' => mktime(23, 59, 0, 2, 22, 2008)), mktime(23, 59, 0, 2, 28, 2008))));
+  dprint("23.".(false == elysia_cron_should_run(array('rule' => '29,59 23 * * 5', 'last_run' => mktime(23, 59, 0, 2, 22, 2008)), mktime(23, 59, 0, 2, 28, 2008))));
   dprint("24.".(true  == elysia_cron_should_run(array('rule' => '29,59 23 * * 5', 'last_run' => mktime(23, 59, 0, 2, 22, 2008)), mktime(23, 59, 0, 2, 29, 2008))));
   dprint("25.".(true  == elysia_cron_should_run(array('rule' => '29,59 23 * * 5', 'last_run' => mktime(23, 59, 0, 2, 22, 2008)), mktime(0, 0, 0, 3, 1, 2008))));
   
-  dprint("26.".(false  == elysia_cron_should_run(array('rule' => '59 23 * * 3', 'last_run' => mktime(23, 59, 0, 12, 31, 2008)), mktime(0, 0, 0, 1, 1, 2009))));
-  dprint("27.".(false  == elysia_cron_should_run(array('rule' => '59 23 * * 3', 'last_run' => mktime(23, 59, 0, 12, 31, 2008)), mktime(0, 0, 0, 1, 7, 2009))));
+  dprint("26.".(false == elysia_cron_should_run(array('rule' => '59 23 * * 3', 'last_run' => mktime(23, 59, 0, 12, 31, 2008)), mktime(0, 0, 0, 1, 1, 2009))));
+  dprint("27.".(false == elysia_cron_should_run(array('rule' => '59 23 * * 3', 'last_run' => mktime(23, 59, 0, 12, 31, 2008)), mktime(0, 0, 0, 1, 7, 2009))));
   dprint("28.".(true  == elysia_cron_should_run(array('rule' => '59 23 * * 3', 'last_run' => mktime(23, 59, 0, 12, 31, 2008)), mktime(23, 59, 0, 1, 7, 2009))));
   
   dprint("29.".(true  == elysia_cron_should_run(array('rule' => '59 23 * 2 5', 'last_run' => mktime(23, 59, 0, 2, 22, 2008)), mktime(23, 59, 0, 2, 29, 2008))));
   dprint("30.".(true  == elysia_cron_should_run(array('rule' => '59 23 * 2 5', 'last_run' => mktime(23, 59, 0, 2, 22, 2008)), mktime(0, 0, 0, 3, 1, 2008))));
-  dprint("31.".(false  == elysia_cron_should_run(array('rule' => '59 23 * 2 5', 'last_run' => mktime(23, 59, 0, 2, 29, 2008)), mktime(23, 59, 0, 3, 7, 2008))));
-  dprint("32.".(false  == elysia_cron_should_run(array('rule' => '59 23 * 2 5', 'last_run' => mktime(23, 59, 0, 2, 29, 2008)), mktime(23, 58, 0, 2, 6, 2009))));
+  dprint("31.".(false == elysia_cron_should_run(array('rule' => '59 23 * 2 5', 'last_run' => mktime(23, 59, 0, 2, 29, 2008)), mktime(23, 59, 0, 3, 7, 2008))));
+  dprint("32.".(false == elysia_cron_should_run(array('rule' => '59 23 * 2 5', 'last_run' => mktime(23, 59, 0, 2, 29, 2008)), mktime(23, 58, 0, 2, 6, 2009))));
   dprint("33.".(true  == elysia_cron_should_run(array('rule' => '59 23 * 2 5', 'last_run' => mktime(23, 59, 0, 2, 29, 2008)), mktime(23, 59, 0, 2, 6, 2009))));
   dprint("34.".(true  == elysia_cron_should_run(array('rule' => '59 23 *'.'/10 * *', 'last_run' => mktime(23, 58, 0, 1, 10, 2008)), mktime(23, 59, 0, 1, 10, 2008))));
   dprint("35.".(false == elysia_cron_should_run(array('rule' => '59 23 *'.'/10 * *', 'last_run' => mktime(23, 59, 0, 1, 10, 2008)), mktime(23, 59, 0, 1, 11, 2008))));
   dprint("36.".(true  == elysia_cron_should_run(array('rule' => '59 23 *'.'/10 * *', 'last_run' => mktime(23, 59, 0, 1, 10, 2008)), mktime(23, 59, 0, 1, 20, 2008))));
   dprint("37.".(true  == elysia_cron_should_run(array('rule' => '59 23 1-5,10-15 * *', 'last_run' => mktime(23, 59, 0, 1, 4, 2008)), mktime(23, 59, 0, 1, 5, 2008))));
   dprint("38.".(true  == elysia_cron_should_run(array('rule' => '59 23 1-5,10-15 * *', 'last_run' => mktime(23, 59, 0, 1, 4, 2008)), mktime(23, 59, 0, 1, 6, 2008))));
-  dprint("39.".(false  == elysia_cron_should_run(array('rule' => '59 23 1-5,10-15 * *', 'last_run' => mktime(23, 59, 0, 1, 5, 2008)), mktime(23, 59, 0, 1, 6, 2008))));
-  dprint("40.".(false  == elysia_cron_should_run(array('rule' => '59 23 1-5,10-15 * *', 'last_run' => mktime(23, 59, 0, 1, 5, 2008)), mktime(23, 58, 0, 1, 10, 2008))));
+  dprint("39.".(false == elysia_cron_should_run(array('rule' => '59 23 1-5,10-15 * *', 'last_run' => mktime(23, 59, 0, 1, 5, 2008)), mktime(23, 59, 0, 1, 6, 2008))));
+  dprint("40.".(false == elysia_cron_should_run(array('rule' => '59 23 1-5,10-15 * *', 'last_run' => mktime(23, 59, 0, 1, 5, 2008)), mktime(23, 58, 0, 1, 10, 2008))));
   dprint("41.".(true  == elysia_cron_should_run(array('rule' => '59 23 1-5,10-15 * *', 'last_run' => mktime(23, 59, 0, 1, 5, 2008)), mktime(23, 59, 0, 1, 10, 2008))));
   dprint("42.".(true  == elysia_cron_should_run(array('rule' => '59 23 1-5,10-15 * *', 'last_run' => mktime(23, 59, 0, 1, 5, 2008)), mktime(23, 59, 0, 1, 16, 2008))));
 
   dprint("43.".(true  == elysia_cron_should_run(array('rule' => '59 23 1-5 1 0', 'last_run' => mktime(23, 59, 0, 1, 4, 2008)), mktime(23, 59, 0, 1, 5, 2008))));
   dprint("44.".(true  == elysia_cron_should_run(array('rule' => '59 23 1-5 1 0', 'last_run' => mktime(23, 59, 0, 1, 5, 2008)), mktime(23, 59, 0, 1, 6, 2008))));
-  dprint("45.".(false  == elysia_cron_should_run(array('rule' => '59 23 1-5 1 0', 'last_run' => mktime(23, 59, 0, 1, 6, 2008)), mktime(23, 59, 0, 1, 7, 2008))));
+  dprint("45.".(false == elysia_cron_should_run(array('rule' => '59 23 1-5 1 0', 'last_run' => mktime(23, 59, 0, 1, 6, 2008)), mktime(23, 59, 0, 1, 7, 2008))));
   dprint("46.".(true  == elysia_cron_should_run(array('rule' => '59 23 1-5 1 0', 'last_run' => mktime(23, 59, 0, 1, 6, 2008)), mktime(23, 59, 0, 1, 13, 2008))));
-  dprint("47.".(false  == elysia_cron_should_run(array('rule' => '59 23 1-5 1 0', 'last_run' => mktime(23, 59, 0, 2, 4, 2008)), mktime(23, 59, 0, 2, 5, 2008))));
-  dprint("48.".(false  == elysia_cron_should_run(array('rule' => '59 23 1-5 1 0', 'last_run' => mktime(23, 59, 0, 2, 5, 2008)), mktime(23, 59, 0, 2, 10, 2008))));
-  dprint("49.".(false  == elysia_cron_should_run(array('rule' => '59 23 1-5 1 0', 'last_run' => mktime(23, 59, 0, 2, 10, 2008)), mktime(23, 59, 0, 2, 17, 2008))));
+  dprint("47.".(false == elysia_cron_should_run(array('rule' => '59 23 1-5 1 0', 'last_run' => mktime(23, 59, 0, 2, 4, 2008)), mktime(23, 59, 0, 2, 5, 2008))));
+  dprint("48.".(false == elysia_cron_should_run(array('rule' => '59 23 1-5 1 0', 'last_run' => mktime(23, 59, 0, 2, 5, 2008)), mktime(23, 59, 0, 2, 10, 2008))));
+  dprint("49.".(false == elysia_cron_should_run(array('rule' => '59 23 1-5 1 0', 'last_run' => mktime(23, 59, 0, 2, 10, 2008)), mktime(23, 59, 0, 2, 17, 2008))));
+  
+  dprint("49.".(true  == elysia_cron_should_run(array('rule' => '* 0,1,2,3,4,5,6,7,8,18,19,20,21,22,23 * * *', 'last_run' => mktime(8, 58, 0, 2, 10, 2008)), mktime(8, 59, 0, 2, 10, 2008))));
+  dprint("50.".(false == elysia_cron_should_run(array('rule' => '* 0,1,2,3,4,5,6,7,8,18,19,20,21,22,23 * * *', 'last_run' => mktime(8, 59, 0, 2, 10, 2008)), mktime(9, 00, 0, 2, 10, 2008))));
+  dprint("51.".(false == elysia_cron_should_run(array('rule' => '* 0,1,2,3,4,5,6,7,8,18,19,20,21,22,23 * * *', 'last_run' => mktime(8, 59, 0, 2, 10, 2008)), mktime(17, 59, 0, 2, 10, 2008))));
+  dprint("52.".(true  == elysia_cron_should_run(array('rule' => '* 0,1,2,3,4,5,6,7,8,18,19,20,21,22,23 * * *', 'last_run' => mktime(8, 59, 0, 2, 10, 2008)), mktime(18, 00, 0, 2, 10, 2008))));
+  dprint("53.".(true  == elysia_cron_should_run(array('rule' => '* 0,1,2,3,4,5,6,7,8,18,19,20,21,22,23 * * *', 'last_run' => mktime(18, 00, 0, 2, 10, 2008)), mktime(18, 01, 0, 2, 10, 2008))));
+  dprint("54.".(true  == elysia_cron_should_run(array('rule' => '* 0,1,2,3,4,5,6,7,8,18,19,20,21,22,23 * * *', 'last_run' => mktime(18, 00, 0, 2, 10, 2008)), mktime(19, 0, 0, 2, 10, 2008))));
+  dprint("55.".(true  == elysia_cron_should_run(array('rule' => '* 0,1,2,3,4,5,6,7,8,18,19,20,21,22,23 * * *', 'last_run' => mktime(18, 00, 0, 2, 10, 2008)), mktime(9, 0, 0, 3, 10, 2008))));
   
   dprint("End test");
 }
 // Remove comment to run tests
-// test_elysia_cron_should_run();
+//test_elysia_cron_should_run();die();
 
 /*******************************************************************************
  * THEMING
@@ -1950,6 +1999,31 @@ function theme_elysia_cron_description($variables) {
     case 'trigger_cron': return 'Triggers cron actions';
     case 'update_cron': return 'Checks for available updates of Drupal core, contributed modules and themes';
     default: return '-';
+  }
+}
+
+/*******************************************************************************
+ * PING SUPPORT
+ ******************************************************************************/
+
+/**
+ * Page callback for ping page.  Throws 404 if cron hasn't been called within configured time period.
+ */
+function elysia_cron_ping_page() {
+  $last_run = _ec_variable_get('elysia_cron_last_run', 0);
+  $diff = time() - $last_run;
+  $max_interval = _ec_variable_get('elysia_cron_alert_interval', 60) * 60;
+  
+  if ($diff > $max_interval) {
+    return drupal_not_found();
+  }
+  else {
+    $aoutput = array();
+    $aoutput[] = array(
+      '#type' => 'markup',
+      '#markup' => t('Cron has been called within maximum lapse time.')
+    );
+    return _dcr_render_array($aoutput);
   }
 }
 

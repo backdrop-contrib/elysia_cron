@@ -174,8 +174,12 @@ function elysia_cron_check_version_update() {
     
     unset($GLOBALS['_ec_variables']);
   }
-  if ($ver < 20110222) {
-    if (VERSION >= 6 && VERSION < 7) {
+  if ($ver < 20110323) {
+    if (VERSION >= 7) {
+      // D7
+      db_change_field('elysia_cron', 'weight', 'weight', array('type' => 'int', 'not null' => FALSE));
+      
+    } elseif (VERSION >= 6) {
       // D6
       $ret = array();
       db_change_field($ret, 'elysia_cron', 'weight', 'weight', array('type' => 'int', 'not null' => FALSE));
@@ -184,7 +188,7 @@ function elysia_cron_check_version_update() {
       db_query("alter table {elysia_cron} change weight weight int(11)");
     }
     
-    _ec_variable_set('elysia_cron_version', 20110222);
+    _ec_variable_set('elysia_cron_version', 20110323);
   }
   // D7 VERSION FROM NOW ON...
 }
