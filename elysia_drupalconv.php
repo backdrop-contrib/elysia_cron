@@ -1,7 +1,6 @@
 <?php
 
-  if (!defined("VERSION"))
-    define("VERSION", 7);
+  define('EC_DRUPAL_VERSION', 7);
 
   /***************************************************************
    * D7 VERSION 

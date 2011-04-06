@@ -68,7 +68,7 @@ function elysia_cron_check_version_update() {
     
   } 
   if ($ver < 20100507) {
-    if (VERSION >= 6)
+    if (EC_DRUPAL_VERSION >= 6)
       // D6
       drupal_install_schema('elysia_cron');
 
@@ -175,11 +175,11 @@ function elysia_cron_check_version_update() {
     unset($GLOBALS['_ec_variables']);
   }
   if ($ver < 20110323) {
-    if (VERSION >= 7) {
+    if (EC_DRUPAL_VERSION >= 7) {
       // D7
       db_change_field('elysia_cron', 'weight', 'weight', array('type' => 'int', 'not null' => FALSE));
       
-    } elseif (VERSION >= 6) {
+    } elseif (EC_DRUPAL_VERSION >= 6) {
       // D6
       $ret = array();
       db_change_field($ret, 'elysia_cron', 'weight', 'weight', array('type' => 'int', 'not null' => FALSE));

@@ -81,12 +81,12 @@ function elysia_cron_menu($_dcr_maycache = true) {
   $items['admin/build/cron/ping'] = array(
     'type' => MENU_CALLBACK,
     'page callback' => 'elysia_cron_ping_page',
-    'access arguments' => TRUE,
+    'access callback' => TRUE,
   );
   return _dcf_hook_menu($items, $_dcr_maycache);
 }
 
-if (VERSION >= 7) {
+if (EC_DRUPAL_VERSION >= 7) {
   // Override standard cron page 
   function elysia_cron_menu_alter(&$items) {
     $items['admin/config/system/cron'] = array(
@@ -110,7 +110,7 @@ function elysia_cron_permission() { // For D7
 function elysia_cron_boot() {
   if (!_dcf_hook_boot('elysia_cron')) return;
   
-  if (VERSION < 7) {
+  if (EC_DRUPAL_VERSION < 7) {
     global $conf;
     
     // I need to set cron_semaphore always to false. That way standard drupal cron is always bypassed
@@ -132,7 +132,7 @@ function elysia_cron_cron() {
   
   $result = elysia_cron_run($manual_run);
   
-  if (VERSION < 7) {
+  if (EC_DRUPAL_VERSION < 7) {
     // I must check for cron_semaphore and delete it if set (is not always deleted by elysia_cron_run, and this situation is only when called by drupal cron, so a check here is right)
     if (variable_get('cron_semaphore', false)) {
       global $conf;
@@ -179,7 +179,7 @@ function elysia_cron_help($section, $arg = false) {
 function _ec_variable_init() {
   global $_ec_variables;
   $_ec_variables = array();
-  if (VERSION >= 7) {
+  if (EC_DRUPAL_VERSION >= 7) {
     $_ec_variables = array_map('unserialize', db_query("SELECT name, value FROM {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%' or name = 'cron_key'")->fetchAllKeyed());    
   } else {
     $result = db_query("select * from {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%' or name = 'cron_key'");
@@ -219,7 +219,7 @@ function _ec_variable_set($name, $value) {
   if (!is_array($_ec_variables)) 
     _ec_variable_init();
   
-  if (VERSION >= 7) {
+  if (EC_DRUPAL_VERSION >= 7) {
     db_merge('variable')->key(array('name' => $name))->fields(array('value' => serialize($value)))->execute();
     
   } else {
@@ -245,7 +245,7 @@ function _ec_variable_del($name) {
   if (!is_array($_ec_variables)) 
     _ec_variable_init();
   
-  if (VERSION >= 7) {
+  if (EC_DRUPAL_VERSION >= 7) {
     db_delete('variable')->condition('name', $name)->execute();
     
   } else {
@@ -261,7 +261,7 @@ function _ec_variable_del($name) {
   unset($_ec_variables[$name]);
 }
 
-if (VERSION < 7) {
+if (EC_DRUPAL_VERSION < 7) {
   function _ec_semaphore_get($name = 'elysia_cron_semaphore', $timeout = 120) {
     if (function_exists('elysia_cron_semaphore_get_alternative'))
       return elysia_cron_semaphore_get_alternative($name, $timeout);
@@ -286,7 +286,7 @@ if (VERSION < 7) {
 }
 
 function _ec_get_name($name) {
-  $maxlen = VERSION >= 6 ? 120 : 40;
+  $maxlen = EC_DRUPAL_VERSION >= 6 ? 120 : 40;
   if (strlen($name) < $maxlen)
     return $name;
   $border = ($maxlen - 32) / 2; 
@@ -297,7 +297,7 @@ function elysia_cron_set($name, $channel = false, $values = array()) {
   if ($channel)
     $name = ':' . $name;
 
-  if (VERSION >= 7) {
+  if (EC_DRUPAL_VERSION >= 7) {
     db_merge('elysia_cron')->key(array('name' => $name))->fields($values)->execute();
     
   } else {
@@ -349,7 +349,7 @@ function elysia_cron_get($name, $channel = false, $key, $default, $refresh = fal
     $name = ':' . $name;
 
   if ($refresh || !isset($elysia_cron_db_cache[$name])) {
-    if (VERSION >= 7)
+    if (EC_DRUPAL_VERSION >= 7)
       $elysia_cron_db_cache[$name] = db_query("select * from {elysia_cron} where name = :name", array(':name' => $name))->fetchAssoc();
     else
       $elysia_cron_db_cache[$name] = db_fetch_array(db_query("select * from {elysia_cron} where name = '%s'", $name));
@@ -598,7 +598,7 @@ function elysia_cron_admin_page() {
   $output .= '<p>Global disable: <i>'.($v ? '<span class="warn">YES</span>':'no').'</i></p>';
   $output .= '<p>Last channel executed: <i>' . (($c = elysia_cron_last_channel()) ? $c : t('n/a')) .'</i></p>';
   
-  if (VERSION < 7) {
+  if (EC_DRUPAL_VERSION < 7) {
     if (_ec_variable_get('elysia_cron_semaphore', 0))
       $output .= '<p><span class="warn">Global semaphore active since '.elysia_cron_date(_ec_variable_get('elysia_cron_semaphore', 0)).'</span></p>';
   }
@@ -628,13 +628,13 @@ function elysia_cron_admin_page() {
     $rows = array();
     foreach ($data as $job => $conf) if ($job != '#data') {
       $rows[] = array(
-        ($conf['disabled'] ? '<strike>'.$job.'</strike>' : (!$conf['running'] ? '<b>'.$job.'</b>' : '<b><u>'.$job.'</u></b> <small title="'.t('Running').'">(R)</small>')).(elysia_cron_should_run($conf) ? ' <small title="'.t('Waiting for execution').'">(w)</small>' : ''), 
+        (!empty($conf['disabled']) ? '<strike>'.$job.'</strike>' : (empty($conf['running']) ? '<b>'.$job.'</b>' : '<b><u>'.$job.'</u></b> <small title="'.t('Running').'">(R)</small>')).(elysia_cron_should_run($conf) ? ' <small title="'.t('Waiting for execution').'">(w)</small>' : ''), 
         array('data' => '<i>'.elysia_cron_description($job).'</i> ' . 
           '['._dco_l(t('run'), _dcf_internal_path('admin/config/system/cron/execute/').$job, array('attributes' => array('onclick' => 'return confirm("'.t('Force execution of !job?', array('!job' => $job)).'");'))).']',
         'colspan' => 4)
       );
       $rows[] = array(
-        $conf['rule'] . ($conf['weight'] ? ' <small>('.t('Weight').': '.$conf['weight'] .')</small>' : ''), elysia_cron_date($conf['last_run']), $conf['last_execution_time'].'s',
+        $conf['rule'] . (!empty($conf['weight']) ? ' <small>('.t('Weight').': '.$conf['weight'] .')</small>' : ''), elysia_cron_date($conf['last_run']), $conf['last_execution_time'].'s',
         $conf['execution_count'], $conf['avg_execution_time'].'s / '.$conf['max_execution_time'].'s'
        
       );
@@ -781,7 +781,7 @@ EOT
     '#collapsed' => true,
   );
   
-  if (VERSION >= 7) {
+  if (EC_DRUPAL_VERSION >= 7) {
     $form['installation']['cron_safe_threshold'] = array(
       '#type' => 'select',
       '#title' => t('Run cron on visitor\'s requests, every'),
@@ -1197,7 +1197,7 @@ function elysia_cron_settings_form_submit($_dco_form, &$_dco_form_state) {
 }
 
 function elysia_cron_date($timestamp) {
-  return $timestamp > 0 ? format_date($timestamp, VERSION >= 7 ? 'short' : 'small') : t('n/a');
+  return $timestamp > 0 ? format_date($timestamp, EC_DRUPAL_VERSION >= 7 ? 'short' : 'small') : t('n/a');
   //return date(variable_get('date_format_short', 'm/d/Y - H:i'), $timestamp); 
 }
 
@@ -1427,7 +1427,7 @@ function elysia_cron_run($manual_run = false) {
     set_time_limit(_ec_variable_get('elysia_cron_time_limit', 240));
 
   // Prevent session information from being saved while cron is running.
-  if (VERSION >= 7)
+  if (EC_DRUPAL_VERSION >= 7)
     drupal_save_session(FALSE);
     
   // If DISABLED block the execution
@@ -1448,7 +1448,7 @@ function elysia_cron_run($manual_run = false) {
   _ec_variable_set('cron_last', time());
 
   $execute = true;
-  if (VERSION >= 7) {
+  if (EC_DRUPAL_VERSION >= 7) {
     if (!lock_acquire('cron', 240.0)) {
       _dco_watchdog('cron', 'Attempting to re-run cron while it is already running.', array(), WATCHDOG_WARNING);
       $execute = false;
@@ -1465,7 +1465,7 @@ function elysia_cron_run($manual_run = false) {
     $GLOBALS['user'] = drupal_anonymous_user();
   }
   
-  if (VERSION >= 7) {
+  if (EC_DRUPAL_VERSION >= 7) {
     // D7 Queue processing
     // Grab the defined cron queues (even if execute = false)
     $queues = module_invoke_all('cron_queue_info');
@@ -1473,7 +1473,7 @@ function elysia_cron_run($manual_run = false) {
   }
   
   if ($execute) {
-    if (VERSION >= 7) {
+    if (EC_DRUPAL_VERSION >= 7) {
       // D7 Queue processing
       // Make sure every queue exists. There is no harm in trying to recreate an
       // existing queue.
@@ -1527,7 +1527,7 @@ function elysia_cron_run($manual_run = false) {
       ));
     
       // Now I can unlock cron semaphore      
-      if (VERSION < 7) {
+      if (EC_DRUPAL_VERSION < 7) {
         _ec_variable_del('elysia_cron_semaphore');
         
         // Some modules (feedapi, ipaper...) uses the internal "cron_semaphore" variable to detect
@@ -1561,7 +1561,7 @@ function elysia_cron_run($manual_run = false) {
       
     } else {
       // No jobs should be executed, i must unlock cron semaphore
-      if (VERSION < 7) {
+      if (EC_DRUPAL_VERSION < 7) {
         _ec_variable_del('elysia_cron_semaphore');
       }
 
@@ -1570,7 +1570,7 @@ function elysia_cron_run($manual_run = false) {
     }
     
     // Release cron lock.
-    if (VERSION >= 7) {
+    if (EC_DRUPAL_VERSION >= 7) {
       lock_release('cron');
 
     } else {
@@ -1579,7 +1579,7 @@ function elysia_cron_run($manual_run = false) {
     }
   }
 
-  if (VERSION >= 7) {
+  if (EC_DRUPAL_VERSION >= 7) {
     // D7 Queue processing
     foreach ($queues as $queue_name => $info) {
       $function = $info['worker callback'];
