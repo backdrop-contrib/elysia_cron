@@ -180,9 +180,9 @@ function _ec_variable_init() {
   global $_ec_variables;
   $_ec_variables = array();
   if (EC_DRUPAL_VERSION >= 7) {
-    $_ec_variables = array_map('unserialize', db_query("SELECT name, value FROM {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%' or name = 'cron_key'")->fetchAllKeyed());    
+    $_ec_variables = array_map('unserialize', db_query("SELECT name, value FROM {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%' or name = 'cron_key' or name = 'cron_safe_threshold'")->fetchAllKeyed());    
   } else {
-    $result = db_query("select * from {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%' or name = 'cron_key'");
+    $result = db_query("select * from {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%' or name = 'cron_key' or name = 'cron_safe_threshold'");
     while ($variable = db_fetch_object($result))
       $_ec_variables[$variable->name] = unserialize($variable->value);
   }
@@ -785,7 +785,7 @@ EOT
     $form['installation']['cron_safe_threshold'] = array(
       '#type' => 'select',
       '#title' => t('Run cron on visitor\'s requests, every'),
-      '#default_value' => variable_get('cron_safe_threshold', DRUPAL_CRON_DEFAULT_THRESHOLD),
+      '#default_value' => _ec_variable_get('cron_safe_threshold', DRUPAL_CRON_DEFAULT_THRESHOLD),
       '#description' => t('Setting a time here will enable the "poormanscron" method, which runs the Drupal cron operation using normal browser/page requests instead of having to set up a crontab to request the cron.php script. This approach requires that your site gets regular traffic/visitors in order to trigger the cron request.') . '<br />'.
         t('This way is fine if you don\'t need a great control over job starting times and execution frequency.').'<br />'.
         t('If you need a fine grained control over cron timings use the crontab metod, as <a href="!cron_url">described in Drupal installation guide</a>.', array('!cron_url' => url('http://drupal.org/cron'))).'<br />'.
@@ -1143,15 +1143,15 @@ function elysia_cron_settings_form_submit($_dco_form, &$_dco_form_state) {
   foreach ($form_values as $key => $value) {
     $value = trim($value);
     if (!preg_match('/^_elysia_cron_([^_]+_[^_]+)_(.*)$/', $key, $r)) {
-      if ($op == t('Reset to defaults') || !$value) {
+      if ($op == t('Reset to defaults') || ($key != 'cron_safe_threshold' && !$value)) {
         _ec_variable_del($key);
-        if ($key == 'cron_key')
+        if ($key == 'cron_key' || $key == 'cron_safe_threshold')
           variable_del($key);
       } elseif ($key != 'elysia_cron_default_rules') {
         if (is_array($value) && isset($form_values['array_filter']))
           $value = array_keys(array_filter($value));
         _ec_variable_set($key, $value);
-        if ($key == 'cron_key')
+        if ($key == 'cron_key' || $key == 'cron_safe_threshold')
           variable_set($key, $value);
       }
     } else {
