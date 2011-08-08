@@ -1226,7 +1226,7 @@ function elysia_cron_run_form_submit($_dco_form, &$_dco_form_state) {
 }
 
 function elysia_cron_execute_page($job = false) {
-  global $cron_completed, $cron_executing_job;
+  global $cron_completed, $cron_executing_job, $conf;
   
   if (!$job) {
     drupal_set_message(t('No job specified'), 'error');
@@ -1247,11 +1247,24 @@ function elysia_cron_execute_page($job = false) {
     $cron_completed = false;
     $cron_executing_job = $job;
     
+    if (EC_DRUPAL_VERSION < 7) {
+      // Some modules (feedapi, ipaper...) uses the internal "cron_semaphore" variable to detect
+      // start time of cron process. I'll set this only in memory for that purpose.
+      // (In normal drupal cron execution that is done by a variable_set just before this call, 
+      // but i need to set this manually if drupal cron is bypassed)
+      $conf['cron_semaphore'] = time();
+    }
+    
     // Register shutdown callback
     register_shutdown_function('elysia_cron_execute_page_cleanup');
 
     elysia_cron_initialize();
     elysia_cron_execute($job);
+    
+    if (EC_DRUPAL_VERSION < 7) {
+      _ec_variable_del('cron_semaphore');
+      $conf['cron_semaphore'] = false;
+    }
     
     $cron_completed = true;
     
