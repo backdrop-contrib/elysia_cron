@@ -270,7 +270,7 @@ if (EC_DRUPAL_VERSION < 7) {
     $semglob = db_result(db_query("select value from {variable} where name = '%s'", 'elysia_cron_semaphore'));
     $semglob = $semglob ? unserialize($semglob) : false;
     
-    $stuck = $semglob && (time() - $semglob > $time);
+    $stuck = $semglob && (time() - $semglob > $timeout);
     if ($stuck || !$semglob) {
       db_query("DELETE FROM {variable} WHERE name = '%s'", 'elysia_cron_semaphore');
       db_query("INSERT INTO {variable} (name, value) VALUES ('%s', '%s')", 'elysia_cron_semaphore', serialize(time()));
@@ -1502,9 +1502,10 @@ function elysia_cron_run($manual_run = false) {
         unset($sem);
         _dco_watchdog('cron', 'Cron channel (%channel) has been running for more than an %stuck_time secs and is most likely stuck. Last job executed: %job', array('%channel' => $channels[$j], '%stuck_time' => $stuck_time, '%job' => $last_job), WATCHDOG_ERROR);
       }
-      if (!$sem && !$elysia_cron_settings_by_channel[$channels[$j]]['#data']['disabled'] && time() - $elysia_cron_settings_by_channel[$channels[$j]]['#data']['last_run'] > 60) { 
+      if (empty($sem) && !$elysia_cron_settings_by_channel[$channels[$j]]['#data']['disabled'] && time() - $elysia_cron_settings_by_channel[$channels[$j]]['#data']['last_run'] > 60) { 
         $jobs = elysia_cron_active_jobs($channels[$j]);
-        if (count($jobs)) break;
+        if (count($jobs))
+          break;
       }
       $k++;
     }
@@ -1595,7 +1596,8 @@ function elysia_cron_run($manual_run = false) {
   if ($manual_run) {
     // Restore the user.
     $GLOBALS['user'] = $original_user;
-    drupal_save_session(TRUE);
+    if (EC_DRUPAL_VERSION >= 7)
+      drupal_save_session(TRUE);
   }
   
   // Return TRUE so other functions can check if it did run successfully
@@ -1767,6 +1769,22 @@ function _cronDecodeRule($rule, $min, $max) {
     }
   }
   return $result;
+}
+
+/**
+ * Check if cron is currently running.
+ * (Not used by elysia_cron, can be used by external modules)
+ */
+function elysia_cron_is_running() {
+  global $elysia_cron_settings_by_channel;
+  elysia_cron_initialize();
+
+  $running = array();
+  foreach ($elysia_cron_settings_by_channel as $channel => $data) 
+    if (elysia_cron_is_channel_running($channel))
+      $running[] = $channel;
+      
+  return $running;
 }
 
 function elysia_cron_should_run($conf, $now = -1) {
@@ -2025,32 +2043,4 @@ function elysia_cron_ping_page() {
     );
     return _dcr_render_array($aoutput);
   }
-}
-
-/*******************************************************************************
- * DRUSH SUPPORT
- ******************************************************************************/
-
-/**
- * Implementation of hook_drush_command().
- */
-function elysia_cron_drush_command() {
-  $items = array();
-
-  $items['elysia-cron'] = array(
-    'description' => "Run all cron hooks in all active modules for specified site using elysia cron system. Use this instead of \"core-cron\" if elysia_cron module is installed",
-    'callback'    => 'drush_elysia_cron_run_wrapper',
-    'arguments' => array(),
-  );
-
-  return $items;
-}
-
-/**
- * A drush command callback.
- * 
- * wraps the elysia_cron_run function, passing manual = false
- */
-function drush_elysia_cron_run_wrapper() {
-  return elysia_cron_run(FALSE);
 }
