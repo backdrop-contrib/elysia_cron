@@ -16,6 +16,9 @@ define('DRUPAL_ROOT', getcwd());
 include_once DRUPAL_ROOT . '/includes/bootstrap.inc';
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
+global $base_url;
+$base_url = str_replace('/'.drupal_get_path('module', 'elysia_cron'), '', $base_url);
+
 if (!isset($_GET['cron_key']) || variable_get('cron_key', 'drupal') != $_GET['cron_key']) {
   watchdog('cron', 'Cron could not run because an invalid key was used.', array(), WATCHDOG_NOTICE);
   drupal_access_denied();
