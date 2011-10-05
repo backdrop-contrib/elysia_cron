@@ -48,7 +48,7 @@ RULES AND SCRIPT SYNTAX
  |  +------------- hour (0 - 23)
  |  |  +---------- day of month (1 - 31)
  |  |  |  +------- month (1 - 12)
- |  |  |  |  +---- day of week (0 - 7) (Sunday=0)
+ |  |  |  |  +---- day of week (0 - 6) (Sunday=0)
  |  |  |  |  |
  *  *  *  *  *
 
