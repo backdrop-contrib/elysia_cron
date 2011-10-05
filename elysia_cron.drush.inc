@@ -21,7 +21,7 @@ function elysia_cron_drush_command() {
 
 /**
  * A drush command callback.
- * 
+ *
  * wraps the elysia_cron_run function, passing manual = true
  */
 function drush_elysia_cron_run_wrapper() {
