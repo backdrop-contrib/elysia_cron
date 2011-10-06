@@ -270,4 +270,14 @@ function elysia_cron_check_version_update() {
     _ec_variable_set('elysia_cron_version', 20110323);
   }
   // D7 VERSION FROM NOW ON...
+  
+  if ($ver < 20111007) {
+    $default_rules = _ec_variable_get('elysia_cron_default_rules', $GLOBALS['elysia_cron_default_rules']);
+    if (!empty($default_rules['*/6 * * * *']) && $default_rules['*/6 * * * *'] == 'Every 6 hours') {
+      unset($default_rules['*/6 * * * *']);
+      $default_rules['0 */6 * * *'] = 'Every 6 hours';
+      _ec_variable_set('elysia_cron_default_rules', $default_rules);
+    }
+    _ec_variable_set('elysia_cron_version', 20111007);
+  }
 }
