@@ -5,8 +5,14 @@
  * Handles incoming requests to fire off regularly-scheduled tasks (cron jobs).
  */
 
-if (!file_exists('includes/bootstrap.inc') && preg_match('@^(.*)[\\\\/]sites[\\\\/][^\\\\/]+[\\\\/]modules[\\\\/]([^\\\\/]+[\\\\/])?elysia(_cron)?$@', getcwd(), $r)) {
-  chdir($r[1]);
+if (!file_exists('includes/bootstrap.inc')) {
+  if (!empty($_SERVER['DOCUMENT_ROOT']) && file_exists($_SERVER['DOCUMENT_ROOT'] . '/includes/bootstrap.inc')) {
+    chdir($_SERVER['DOCUMENT_ROOT']);
+  } elseif (preg_match('@^(.*)[\\\\/]sites[\\\\/][^\\\\/]+[\\\\/]modules[\\\\/]([^\\\\/]+[\\\\/])?elysia(_cron)?$@', getcwd(), $r) && file_exists($r[1] . '/includes/bootstrap.inc')) {
+    chdir($r[1]);
+  } else {
+    die("Cron Fatal Error: Can't locate bootstrap.inc. Check cron.php position.");
+  }
 }
 
 /**
@@ -15,10 +21,10 @@ if (!file_exists('includes/bootstrap.inc') && preg_match('@^(.*)[\\\\/]sites[\\\
 define('DRUPAL_ROOT', getcwd());
 
 include_once DRUPAL_ROOT . '/includes/bootstrap.inc';
+drupal_override_server_variables(array(
+  'SCRIPT_NAME' => '/cron.php',
+));
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
-
-global $base_url;
-$base_url = str_replace('/' . drupal_get_path('module', 'elysia_cron'), '', $base_url);
 
 if (!isset($_GET['cron_key']) || variable_get('cron_key', 'drupal') != $_GET['cron_key']) {
   watchdog('cron', 'Cron could not run because an invalid key was used.', array(), WATCHDOG_NOTICE);
