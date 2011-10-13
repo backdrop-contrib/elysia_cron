@@ -5,7 +5,11 @@
  ******************************************************************************/
 
 function elysia_cron_check_version_update() {
-  $ver = _ec_variable_get('elysia_cron_version', 0);
+  $ver = variable_get('elysia_cron_version', 0);
+  if ($ver < 20111012) {
+    $ver = _ec_variable_get('elysia_cron_version', 0);
+  }
+
   if (!$ver || $ver < 20090218) {
 
     $unchanged = array(
@@ -94,20 +98,20 @@ function elysia_cron_check_version_update() {
           }
         }
         if ($vn) {
-          _ec_variable_set($vn, unserialize($v->value));
+          variable_set($vn, unserialize($v->value));
         }
         else {
           _dco_watchdog('cron', 'Error in update, cant convert %name (value: %value)', array('%name' => $v->name, '%value' => $v->value), WATCHDOG_ERROR);
         }
 
-        _ec_variable_del($v->name);
+        variable_del($v->name);
       }
     }
 
-    _ec_variable_set('elysia_cron_version', 20090218);
+    variable_set('elysia_cron_version', 20090218);
   }
   if ($ver < 20090920) {
-    _ec_variable_set('elysia_cron_version', 20090920);
+    variable_set('elysia_cron_version', 20090920);
 
   }
   if ($ver < 20100507) {
@@ -242,11 +246,11 @@ function elysia_cron_check_version_update() {
     db_query("update {elysia_cron} set rule = null where rule = ''");
 
     foreach ($todelete as $v) {
-      _ec_variable_del($v);
+      variable_del($v);
       db_query("DELETE FROM {variable} WHERE name = '%s'", $v);
     }
 
-    _ec_variable_set('elysia_cron_version', 20100507);
+    variable_set('elysia_cron_version', 20100507);
 
     unset($GLOBALS['_ec_variables']);
   }
@@ -267,17 +271,22 @@ function elysia_cron_check_version_update() {
       db_query("alter table {elysia_cron} change weight weight int(11)");
     }
 
-    _ec_variable_set('elysia_cron_version', 20110323);
+    variable_set('elysia_cron_version', 20110323);
   }
   // D7 VERSION FROM NOW ON...
   
   if ($ver < 20111007) {
-    $default_rules = _ec_variable_get('elysia_cron_default_rules', $GLOBALS['elysia_cron_default_rules']);
+    $default_rules = variable_get('elysia_cron_default_rules', $GLOBALS['elysia_cron_default_rules']);
     if (!empty($default_rules['*/6 * * * *']) && $default_rules['*/6 * * * *'] == 'Every 6 hours') {
       unset($default_rules['*/6 * * * *']);
       $default_rules['0 */6 * * *'] = 'Every 6 hours';
-      _ec_variable_set('elysia_cron_default_rules', $default_rules);
+      variable_set('elysia_cron_default_rules', $default_rules);
     }
-    _ec_variable_set('elysia_cron_version', 20111007);
+    variable_set('elysia_cron_version', 20111007);
+  }
+
+  if ($ver < 20111012) {
+    // I only need to rebuild variable cache, so i just set the new version
+    variable_set('elysia_cron_version', 20111012);
   }
 }

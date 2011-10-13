@@ -132,6 +132,7 @@ function elysia_cron_init() {
  * It's used to replace drupal cron.
  */
 function elysia_cron_cron() {
+  // First cron run is executed in standard drupal way. This is to enable the use of install profiles
   if (variable_get('cron_last', 0) == 0) {
     return;
   }
@@ -184,14 +185,24 @@ function elysia_cron_help($section, $arg = false) {
  * WARN: DB and Variable name for "channel" is "context"!
  ******************************************************************************/
 
+// Variables managed by _ec_variable method, because are setted during cron execution handling (with standard variable_set this will invalidate variable cache in EVERY cron clock)
+$GLOBALS['_ec_variables_allowed'] = array(
+  'elysia_cron_version', // Just for compatibility purpose during elysia_cron_update phase
+  'elysia_cron_semaphore', 
+  'elysia_cron_last_run',
+  'elysia_cron_last_context', 
+  'cron_semaphore', 
+  'cron_last',
+);
+ 
 function _ec_variable_init() {
-  global $_ec_variables;
+  global $_ec_variables, $_ec_variables_allowed;
   $_ec_variables = array();
   if (EC_DRUPAL_VERSION >= 7) {
-    $_ec_variables = array_map('unserialize', db_query("SELECT name, value FROM {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%' or name = 'cron_key' or name = 'cron_safe_threshold'")->fetchAllKeyed());
+    $_ec_variables = array_map('unserialize', db_query("SELECT name, value FROM {variable} where name like '" . implode("' or name like '", $_ec_variables_allowed) . "'")->fetchAllKeyed());
   }
   else {
-    $result = db_query("select * from {variable} where name like 'elysia_cron_%%' or name like 'ec_%%' or name like 'ecc_%%' or name = 'cron_key' or name = 'cron_safe_threshold'");
+    $result = db_query("select * from {variable} where name like '" . implode("' or name like '", $_ec_variables_allowed) . "'");
     while ($variable = db_fetch_object($result)) {
       $_ec_variables[$variable->name] = unserialize($variable->value);
     }
@@ -200,12 +211,16 @@ function _ec_variable_init() {
 
 /**
  * A substitute for variable_get to avoid cache management
+ * Use ONLY for variables setted during cron execution: elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_context, cron_semaphore, cron_last
  * WARN_UPGRADE
  */
 function _ec_variable_get($name, $default) {
-  //return variable_get($name, $default);
+  global $_ec_variables, $_ec_variables_allowed;
+  if (!in_array($name, $_ec_variables_allowed)) {
+    _dco_watchdog('cron', 'Wrong variable passed to _ec_variable_get: !var', array('!var' => $name), WATCHDOG_ERROR);
+    return variable_get($name, $default);
+  }
 
-  global $_ec_variables;
   if (!is_array($_ec_variables)) {
     _ec_variable_init();
   }
@@ -225,10 +240,16 @@ function _ec_variable_get($name, $default) {
 
 /**
  * A substitute for variable_set to avoid cache management
+ * Use ONLY for variables setted during cron execution: elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_context, cron_semaphore, cron_last
  * WARN_UPGRADE
  */
 function _ec_variable_set($name, $value) {
-  global $_ec_variables;
+  global $_ec_variables, $_ec_variables_allowed;
+  if (!in_array($name, $_ec_variables_allowed)) {
+    _dco_watchdog('cron', 'Wrong variable passed to _ec_variable_set: !var', array('!var' => $name), WATCHDOG_ERROR);
+    return variable_set($name, $value);
+  }
+
   if (!is_array($_ec_variables)) {
     _ec_variable_init();
   }
@@ -238,7 +259,7 @@ function _ec_variable_set($name, $value) {
 
   }
   else {
-    if (!_ec_variable_get('elysia_cron_alternate_var_handler', false)) {
+    if (!variable_get('elysia_cron_alternate_var_handler', false)) {
       db_lock_table('variable');
       db_query("DELETE FROM {variable} WHERE name = '%s'", $name);
       db_query("INSERT INTO {variable} (name, value) VALUES ('%s', '%s')", $name, serialize($value));
@@ -254,10 +275,16 @@ function _ec_variable_set($name, $value) {
 
 /**
  * A substitute for variable_del to avoid cache management
+ * Use ONLY for variables setted during cron execution: elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_context, cron_semaphore, cron_last
  * WARN_UPGRADE
  */
 function _ec_variable_del($name) {
-  global $_ec_variables;
+  global $_ec_variables, $_ec_variables_allowed;
+  if (!in_array($name, $_ec_variables_allowed)) {
+    _dco_watchdog('cron', 'Wrong variable passed to _ec_variable_del: !var', array('!var' => $name), WATCHDOG_ERROR);
+    return variable_del($name);
+  }
+
   if (!is_array($_ec_variables)) {
     _ec_variable_init();
   }
@@ -267,7 +294,7 @@ function _ec_variable_del($name) {
 
   }
   else {
-    if (!_ec_variable_get('elysia_cron_alternate_var_handler', false)) {
+    if (!variable_get('elysia_cron_alternate_var_handler', false)) {
       db_lock_table('variable');
       db_query("DELETE FROM {variable} WHERE name = '%s'", $name);
       db_unlock_tables();
@@ -644,8 +671,8 @@ function elysia_cron_admin_page() {
 
   global $elysia_cron_settings, $elysia_cron_settings_by_channel, $elysia_cron_current_channel, $cron_completed, $cron_completed_time;
 
-  //dprint('Disabled: '._ec_variable_get('elysia_cron_disabled', false));
-  $v = _ec_variable_get('elysia_cron_disabled', false);
+  //dprint('Disabled: ' . variable_get('elysia_cron_disabled', false));
+  $v = variable_get('elysia_cron_disabled', false);
   $output .= '<p>Global disable: <i>' . ($v ? '<span class="warn">YES</span>' : 'no') . '</i></p>';
   $output .= '<p>Last channel executed: <i>' . (($c = elysia_cron_last_channel()) ? $c : t('n/a')) . '</i></p>';
 
@@ -835,7 +862,7 @@ EOT
   $form['main']['elysia_cron_disabled'] = array(
     '#title' => t('Global disable'),
     '#type' => 'checkbox',
-    '#default_value' => _ec_variable_get('elysia_cron_disabled', false),
+    '#default_value' => variable_get('elysia_cron_disabled', false),
   );
 
   $form['installation'] = array(
@@ -849,7 +876,7 @@ EOT
     $form['installation']['cron_safe_threshold'] = array(
       '#type' => 'select',
       '#title' => t('Run cron on visitor\'s requests, every'),
-      '#default_value' => _ec_variable_get('cron_safe_threshold', DRUPAL_CRON_DEFAULT_THRESHOLD),
+      '#default_value' => variable_get('cron_safe_threshold', DRUPAL_CRON_DEFAULT_THRESHOLD),
       '#description' => t('Setting a time here will enable the "poormanscron" method, which runs the Drupal cron operation using normal browser/page requests instead of having to set up a crontab to request the cron.php script. This approach requires that your site gets regular traffic/visitors in order to trigger the cron request.') . '<br />' .
         t('This way is fine if you don\'t need a great control over job starting times and execution frequency.') . '<br />' .
         t('If you need a fine grained control over cron timings use the crontab metod, as <a href="!cron_url">described in Drupal installation guide</a>.', array('!cron_url' => url('http://drupal.org/cron'))) . '<br />' .
@@ -861,21 +888,21 @@ EOT
   $form['installation']['cron_key'] = array(
     '#title' => t('Cron key'),
     '#type' => 'textfield',
-    '#default_value' => _ec_variable_get('cron_key', ''),
+    '#default_value' => variable_get('cron_key', ''),
     '#description' => t('This is used to avoid external cron calling. If you set this cron will by accessible only by calling http://site/cron.php?cron_key=XXX, so you\'ll need to modify system crontab to support this (Logged user with [administer elysia_cron] permission avoid this check).'),
   );
 
   $form['installation']['elysia_cron_allowed_hosts'] = array(
     '#title' => t('Allowed hosts'),
     '#type' => 'textfield',
-    '#default_value' => _ec_variable_get('elysia_cron_allowed_hosts', ''),
+    '#default_value' => variable_get('elysia_cron_allowed_hosts', ''),
     '#description' => t('Insert a list of ip addresses separated by , that can run cron.php (Logged user with [administer elysia_cron] permission avoid this check).'),
   );
 
   $form['installation']['elysia_cron_default_rule'] = array(
     '#title' => t('Default schedule rule'),
     '#type' => 'textfield',
-    '#default_value' => _ec_variable_get('elysia_cron_default_rule', false),
+    '#default_value' => variable_get('elysia_cron_default_rule', false),
     '#description' => t('If you don\'t specify a rule for a process, and if it has not a module specified one, this rule will apply'),
   );
 
@@ -883,7 +910,7 @@ EOT
     $form['installation']['elysia_cron_time_limit'] = array(
       '#title' => t('Time limit'),
       '#type' => 'textfield',
-      '#default_value' => _ec_variable_get('elysia_cron_time_limit', 240),
+      '#default_value' => variable_get('elysia_cron_time_limit', 240),
       '#description' => t('Set the number of seconds a channel is allowed to run. If you have some jobs that needs more time to execute increase it or set to 0 to disable the limit (WARN: that way a stuck job will block the channel forever!).'),
     );
   }
@@ -891,14 +918,14 @@ EOT
   $form['installation']['elysia_cron_stuck_time'] = array(
     '#title' => t('Stuck time'),
     '#type' => 'textfield',
-    '#default_value' => _ec_variable_get('elysia_cron_stuck_time', 3600),
+    '#default_value' => variable_get('elysia_cron_stuck_time', 3600),
     '#description' => t('How many seconds the process should wait to consider the job as stuck (so the channel can run again)'),
   );
 
   $form['installation']['elysia_cron_debug_messages'] = array(
     '#title' => t('Debug'),
     '#type' => 'select',
-    '#default_value' => _ec_variable_get('elysia_cron_debug_messages', 0),
+    '#default_value' => variable_get('elysia_cron_debug_messages', 0),
     '#options' => array(
       0 => 'Disabled',
       1 => 'Enabled',
@@ -907,7 +934,7 @@ EOT
   );
 
   $default_ruless = '';
-  $default_rules = _ec_variable_get('elysia_cron_default_rules', $GLOBALS['elysia_cron_default_rules']);
+  $default_rules = variable_get('elysia_cron_default_rules', $GLOBALS['elysia_cron_default_rules']);
   foreach ($default_rules as $dk => $dr) {
     $default_ruless .= $dr . ' = ' . $dk . "\n";
   }
@@ -931,7 +958,7 @@ EOT
     '#title' => t('Lapse interval (minutes)'),
     '#type' => 'textfield',
     '#size' => 20,
-    '#default_value' => _ec_variable_get('elysia_cron_alert_interval', 60),
+    '#default_value' => variable_get('elysia_cron_alert_interval', 60),
     '#description' => t('Specify the number of minutes to allow to lapse before the cron ping page returns a 404 (page not found).'),
   );
 
@@ -939,12 +966,12 @@ EOT
     '#title' => t('Script'),
     '#type' => 'fieldset',
     '#collapsible' => true,
-    '#collapsed' => !_ec_variable_get('elysia_cron_script', ''),
+    '#collapsed' => !variable_get('elysia_cron_script', ''),
   );
   $form['elysia_cron_script_fieldset']['elysia_cron_script'] = array(
     '#type' => 'textarea',
     '#rows' => 20,
-    '#default_value' => _ec_variable_get('elysia_cron_script', ''),
+    '#default_value' => variable_get('elysia_cron_script', ''),
     '#description' => t('You can specify new cron jobs or modify existing schedules by adding lines to the script.<br>' .
       '<b>Warning</b> All rules specified in the script will OVERRIDE single job settings and channel settings (sections below).'),
   );
@@ -1220,25 +1247,19 @@ function elysia_cron_settings_form_submit($_dco_form, &$_dco_form_state) {
       $elysia_cron_default_rules[trim($rr[1])] = trim($rr[0]);
     }
   }
-  _ec_variable_set('elysia_cron_default_rules', $elysia_cron_default_rules);
+  variable_set('elysia_cron_default_rules', $elysia_cron_default_rules);
 
   foreach ($form_values as $key => $value) {
     $value = trim($value);
     if (!preg_match('/^_elysia_cron_([^_]+_[^_]+)_(.*)$/', $key, $r)) {
       if ($op == t('Reset to defaults') || ($key != 'cron_safe_threshold' && !$value)) {
-        _ec_variable_del($key);
-        if ($key == 'cron_key' || $key == 'cron_safe_threshold') {
-          variable_del($key);
-        }
+        variable_del($key);
       }
       elseif ($key != 'elysia_cron_default_rules') {
         if (is_array($value) && isset($form_values['array_filter'])) {
           $value = array_keys(array_filter($value));
         }
-        _ec_variable_set($key, $value);
-        if ($key == 'cron_key' || $key == 'cron_safe_threshold') {
-          variable_set($key, $value);
-        }
+        variable_set($key, $value);
       }
     }
     else {
@@ -1351,7 +1372,7 @@ function elysia_cron_execute_page($job = false) {
 
   $running = false;
   if (elysia_cron_is_job_running($job, false)) {
-    if (time() - elysia_cron_get_job_last_run($job, 0) > _ec_variable_get('elysia_cron_stuck_time', 3600)) {
+    if (time() - elysia_cron_get_job_last_run($job, 0) > variable_get('elysia_cron_stuck_time', 3600)) {
       drupal_set_message(t('Job %job already running, but is probably stuck, so i consider it as terminated', array('%job' => $job)));
     }
     else {
@@ -1467,23 +1488,44 @@ function elysia_cron_decode_script($text, $apply = true) {
 }
 
 function elysia_cron_module_jobs() {
-  $jobs = array();
-  foreach (module_implements('cron') as $module) {
-    if ($module != 'elysia_cron') {
-      $jobs[] = array($module, $module . '_cron');
+  static $jobs;
+  if (!isset($jobs)) {
+    $jobs = array();
+    foreach (module_implements('cron') as $module) {
+      if ($module != 'elysia_cron') {
+        $jobs[$module . '_cron'] = array(
+          'module' => $module,
+          'callback' => $module . '_cron',
+          'arguments' => array(),
+        );
+      }
     }
-  }
-
-  foreach (module_implements('cronapi') as $module) {
-    $fn = $module . '_cronapi';
-    $l = $fn('list');
-    if (is_array($l)) {
-      foreach ($l as $job => $desc) {
-        if (!in_array($job, $jobs)) {
-          $jobs[] = array($module, $job);
+  
+    foreach (module_implements('cronapi') as $module) {
+      $fn = $module . '_cronapi';
+      $l = $fn('list');
+      if (is_array($l)) {
+        foreach ($l as $job => $data) {
+          if (is_array($data)) {
+            $jobs[$job] = $data;
+          } else {
+            // Compatibility with v1.x settings
+            $jobs[$job] = array(
+              'description' => $data,
+              'rule' => ($d = $fn('rule', $job)) ? $d : false,
+              'weight' => ($d = $fn('weight', $job)) ? $d : 0,
+            );
+          }
+          $jobs[$job] = $jobs[$job] + array(
+            'module' => $module,
+            'callback' => function_exists($job) ? $job : $fn,
+            'arguments' => function_exists($job) ? array() : array('execute', $job),
+          );
         }
       }
     }
+    if (function_exists('drupal_alter'))
+      drupal_alter('cron', $jobs);
   }
 
   return $jobs;
@@ -1496,50 +1538,32 @@ function elysia_cron_initialize($skipscript = false) {
   $elysia_cron_settings = array();
   $elysia_cron_settings_by_channel = array();
 
-  foreach (elysia_cron_module_jobs() as $job) {
-    $channel = elysia_cron_get_job_channel($job[1], 'default');
+  foreach (elysia_cron_module_jobs() as $job => $jobpars) {
+    $channel = elysia_cron_get_job_channel($job, 'default');
 
-    $defrule = false;
-    $fn = $job[0] . '_cronapi';
-    if (function_exists($fn)) {
-      $defrule = $fn('rule', $job[1]);
-    }
+    $defrule = !empty($jobpars['rule']) ? $jobpars['rule'] : elysia_cron_get_channel_rule($channel);
     if (!$defrule) {
-      $defrule = elysia_cron_get_channel_rule($channel);
-      if (!$defrule) {
-        $defrule = _ec_variable_get('elysia_cron_default_rule', '0 * * * *');
-      }
+      $defrule = variable_get('elysia_cron_default_rule', '0 * * * *');
     }
-
-    $rule = elysia_cron_get_job_rule($job[1]);
-    if (!$rule) {
-      $rule = $defrule;
-    }
-
-    if (function_exists($fn)) {
-      $defweight = $fn('weight', $job[1]);
-      if (!is_numeric($defweight)) {
-        $defweight = 0;
-      }
-    }
-    else {
+    
+    $defweight = !empty($jobpars['weight']) ? $jobpars['weight'] : 0;
+    if (!is_numeric($defweight)) {
       $defweight = 0;
     }
 
-    $elysia_cron_settings[$job[1]] = array(
-      'key' => $job[1],
+    $elysia_cron_settings[$job] = array(
+      'key' => $job,
       'channel' => $channel,
-      'module' => $job[0],
-      'rule' => $rule,
+      'rule' => elysia_cron_get_job_rule($job, $defrule),
       'default_rule' => $defrule,
-      'weight' => elysia_cron_get_job_weight($job[1], $defweight),
+      'weight' => elysia_cron_get_job_weight($job, $defweight),
       'default_weight' => $defweight,
-      'disabled' => elysia_cron_is_job_disabled($job[1]),
-      'running' => elysia_cron_is_job_running($job[1]),
-    );
+      'disabled' => elysia_cron_is_job_disabled($job),
+      'running' => elysia_cron_is_job_running($job),
+    ) + $jobpars;
   }
   if (!$skipscript) {
-    $script = _ec_variable_get('elysia_cron_script', false);
+    $script = variable_get('elysia_cron_script', false);
     if ($script) {
       elysia_cron_decode_script($script);
     }
@@ -1576,7 +1600,7 @@ function elysia_cron_run($manual_run = false) {
 
   // Try to allocate enough time to run all the hook_cron implementations.
   if (!ini_get('safe_mode')) {
-    set_time_limit(_ec_variable_get('elysia_cron_time_limit', 240));
+    set_time_limit(variable_get('elysia_cron_time_limit', 240));
   }
 
   // Prevent session information from being saved while cron is running.
@@ -1585,17 +1609,17 @@ function elysia_cron_run($manual_run = false) {
   }
 
   // If DISABLED block the execution
-  if (_ec_variable_get('elysia_cron_disabled', false)) {
+  if (variable_get('elysia_cron_disabled', false)) {
     return;
   }
 
   // Check for CRON_KEY or ALLOWED_HOSTS
   if (!$manual_run) {
-    $cron_key = _ec_variable_get('cron_key', '');
+    $cron_key = variable_get('cron_key', '');
     if ($cron_key && !user_access('administer elysia_cron') && (empty($_GET['cron_key']) || $_GET['cron_key'] != $cron_key)) {
       return;
     }
-    $allowed_hosts = _ec_variable_get('elysia_cron_allowed_hosts', false);
+    $allowed_hosts = variable_get('elysia_cron_allowed_hosts', false);
     if ($allowed_hosts && !user_access('administer elysia_cron') && !in_array(ip_address(), explode(",", $allowed_hosts))) {
       return;
     }
@@ -1652,7 +1676,7 @@ function elysia_cron_run($manual_run = false) {
     }
     $k = 0;
     $jobs = false;
-    $stuck_time = _ec_variable_get('elysia_cron_stuck_time', 3600);
+    $stuck_time = variable_get('elysia_cron_stuck_time', 3600);
     for ($j = ($i + 1) % count($channels); $k < count($channels); $j = ($j + 1) % count($channels)) {
       $sem = elysia_cron_is_channel_running($channels[$j]);
       if ($sem && (time() - $sem > $stuck_time)) {
@@ -1676,7 +1700,7 @@ function elysia_cron_run($manual_run = false) {
       $elysia_cron_current_channel = $channels[$j];
       elysia_cron_set_last_channel($elysia_cron_current_channel);
 
-      if (_ec_variable_get('elysia_cron_debug_messages', 0)) {
+      if (variable_get('elysia_cron_debug_messages', 0)) {
         _dco_watchdog('cron', 'Cron channel %channel run started.', array('%channel' => $elysia_cron_current_channel), WATCHDOG_NOTICE);
       }
 
@@ -1702,7 +1726,7 @@ function elysia_cron_run($manual_run = false) {
       foreach ($jobs as $job) {
         $job_running = false;
         if (elysia_cron_is_job_running($job)) {
-          if (time() - elysia_cron_get_job_last_run($job, 0) > _ec_variable_get('elysia_cron_stuck_time', 3600)) {
+          if (time() - elysia_cron_get_job_last_run($job, 0) > variable_get('elysia_cron_stuck_time', 3600)) {
             _dco_watchdog('cron', 'Job %job is already running, but is probably stuck, so i consider it as terminated', array('%job' => $job), WATCHDOG_NOTICE);
           }
           else {
@@ -1729,7 +1753,7 @@ function elysia_cron_run($manual_run = false) {
         _ec_variable_del('elysia_cron_semaphore');
       }
 
-      if (_ec_variable_get('elysia_cron_debug_messages', 0)) {
+      if (variable_get('elysia_cron_debug_messages', 0)) {
         _dco_watchdog('cron', 'No channels ready to be executed, skipping cron.', array(), WATCHDOG_NOTICE);
       }
     }
@@ -1773,7 +1797,7 @@ function elysia_cron_run($manual_run = false) {
 function elysia_cron_execute($job) {
   global $elysia_cron_settings;
 
-  if (_ec_variable_get('elysia_cron_debug_messages', 0)) {
+  if (variable_get('elysia_cron_debug_messages', 0)) {
     _dco_watchdog('cron', 'Cron job %job started.', array('%job' => $job), WATCHDOG_NOTICE);
   }
 
@@ -1784,20 +1808,17 @@ function elysia_cron_execute($job) {
   ));
 
   try {
+    if (!empty($elysia_cron_settings[$job]['file'])) {
+      include_once((!empty($elysia_cron_settings[$job]['file path']) ? $elysia_cron_settings[$job]['file path'] : drupal_get_path('module', $elysia_cron_settings[$job]['module'])) . DIRECTORY_SEPARATOR . $elysia_cron_settings[$job]['file']);
+    }
     if (!empty($elysia_cron_settings[$job]['expression'])) {
       eval($elysia_cron_settings[$job]['expression']);
     }
-    elseif (function_exists($job)) {
-      $job();
+    elseif (!empty($elysia_cron_settings[$job]['callback']) && function_exists($elysia_cron_settings[$job]['callback'])) {
+      call_user_func_array($elysia_cron_settings[$job]['callback'], $elysia_cron_settings[$job]['arguments']);
     }
     else {
-      $fn = $elysia_cron_settings[$job]['module'] . '_cronapi';
-      if (function_exists($fn)) {
-        $fn('execute', $job);
-      }
-      else {
-        _dco_watchdog('cron', 'Execution of ' . $job . ' failed, can\'t find function!', array(), WATCHDOG_ERROR);
-      }
+      _dco_watchdog('cron', 'Execution of ' . $job . ' failed, can\'t find function!', array(), WATCHDOG_ERROR);
     }
   }
   catch (Exception $e) {
@@ -1817,7 +1838,7 @@ function elysia_cron_execute($job) {
     array('running' => 0)
   );
 
-  if (_ec_variable_get('elysia_cron_debug_messages', 0)) {
+  if (variable_get('elysia_cron_debug_messages', 0)) {
     _dco_watchdog('cron', 'Cron job %job ended.', array('%job' => $job), WATCHDOG_NOTICE);
   }
 }
@@ -1874,7 +1895,7 @@ function elysia_cron_completed() {
   // Record cron time
   _ec_variable_set('cron_last', time());
 
-  if (_ec_variable_get('elysia_cron_debug_messages', 0)) {
+  if (variable_get('elysia_cron_debug_messages', 0)) {
     _dco_watchdog('cron', 'Cron channel %channel run completed.', array('%channel' => $elysia_cron_current_channel), WATCHDOG_NOTICE);
   }
 
@@ -1935,14 +1956,6 @@ function elysia_cron_description($job) {
 
   if (!empty($elysia_cron_settings[$job]['description'])) {
     return $elysia_cron_settings[$job]['description'];
-  }
-
-  $fn = $elysia_cron_settings[$job]['module'] . '_cronapi';
-  if (function_exists($fn)) {
-    $l = $fn('list');
-    if ($l[$job]) {
-      return $l[$job];
-    }
   }
   return _dco_theme('elysia_cron_description', array('job' => $job));
 }
@@ -2038,7 +2051,7 @@ function theme_elysia_cron_description($variables) {
 function elysia_cron_ping_page() {
   $last_run = _ec_variable_get('elysia_cron_last_run', 0);
   $diff = time() - $last_run;
-  $max_interval = _ec_variable_get('elysia_cron_alert_interval', 60) * 60;
+  $max_interval = variable_get('elysia_cron_alert_interval', 60) * 60;
 
   if ($diff > $max_interval) {
     return drupal_not_found();

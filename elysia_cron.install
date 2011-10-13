@@ -30,54 +30,76 @@ function elysia_cron_schema() {
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
+        'no export' => TRUE,
       ),
       'last_run' => array(
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
+        'no export' => TRUE,
       ),
       'last_aborted' => array(
         'type' => 'int',
         'size' => 'tiny',
         'not null' => TRUE,
         'default' => 0,
+        'no export' => TRUE,
       ),
       'abort_count' => array(
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
+        'no export' => TRUE,
       ),
       'last_abort_function' => array(
         'type' => 'varchar',
         'length' => 32,
+        'no export' => TRUE,
       ),
       'last_execution_time' => array(
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
+        'no export' => TRUE,
       ),
       'execution_count' => array(
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
+        'no export' => TRUE,
       ),
       'avg_execution_time' => array(
         'type' => 'float',
         'not null' => TRUE,
         'default' => 0,
+        'no export' => TRUE,
       ),
       'max_execution_time' => array(
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
+        'no export' => TRUE,
       ),
       'last_shutdown_time' => array(
         'type' => 'int',
         'not null' => TRUE,
         'default' => 0,
+        'no export' => TRUE,
       ),
     ),
     'primary key' => array('name'),
+    'export' => array(
+      'key' => 'name',
+      'key name' => 'Cron name',
+      'primary key' => 'name',
+      'identifier' => 'cron_rule',
+      'api' => array(
+        'owner' => 'elysia_cron',
+        'api' => 'default_elysia_cron_rules',
+        'minimum_version' => 1,
+        'current_version' => 1,
+      ),
+    ),
   );
   return $schema;
 }
