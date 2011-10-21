@@ -8,14 +8,14 @@ function elysia_cron_schema() {
         'length' => 120,
         'not null' => TRUE,
       ),
-      'disabled' => array(
+      'disable' => array(
         'type' => 'int',
         'size' => 'tiny',
-        'not null' => TRUE,
-        'default' => 0,
+        'not null' => FALSE,
       ),
       'rule' => array(
         'type' => 'varchar',
+        'not null' => FALSE,
         'length' => 32,
       ),
       'weight' => array(
@@ -24,6 +24,7 @@ function elysia_cron_schema() {
       ),
       'context' => array(
         'type' => 'varchar',
+        'not null' => FALSE,
         'length' => 32,
       ),
       'running' => array(
@@ -90,9 +91,18 @@ function elysia_cron_schema() {
     'primary key' => array('name'),
     'export' => array(
       'key' => 'name',
-      'key name' => 'Cron name',
+      'key name' => 'Cron job name',
       'primary key' => 'name',
       'identifier' => 'cron_rule',
+      'object factory' => 'elysia_cron_ctools_export_object_factory',
+      'load callback' => 'elysia_cron_ctools_export_load',
+      'load all callback' => 'elysia_cron_ctools_export_load_all',
+      //'save callback' => 'elysia_cron_ctools_export_save',
+      'export callback' => 'elysia_cron_ctools_export_callback',
+      //'import callback' => 'elysia_cron_ctools_import_callback',
+      'to hook code callback' => 'elysia_cron_ctools_to_hook_code',
+      
+      'default hook' => 'default_elysia_cron_rules',
       'api' => array(
         'owner' => 'elysia_cron',
         'api' => 'default_elysia_cron_rules',
@@ -122,7 +132,7 @@ function elysia_cron_install() {
   }
   db_update('system')->fields(array('weight' => $min))->condition('name', 'elysia_cron')->execute();
   
-  variable_set('elysia_cron_version', 20110208);
+  variable_set('elysia_cron_version', elysia_cron_version());
   
   drupal_set_message('Elysia cron installed. Setup could be found at ' . l(t('Settings page'), 'admin/config/system/cron') . '. See INSTALL.TXT for more info.');
 }

@@ -254,6 +254,8 @@ function elysia_cron_check_version_update() {
 
     unset($GLOBALS['_ec_variables']);
   }
+  // D7 VERSION FROM NOW ON...
+
   if ($ver < 20110323) {
     if (EC_DRUPAL_VERSION >= 7) {
       // D7
@@ -273,7 +275,6 @@ function elysia_cron_check_version_update() {
 
     variable_set('elysia_cron_version', 20110323);
   }
-  // D7 VERSION FROM NOW ON...
   
   if ($ver < 20111007) {
     $default_rules = variable_get('elysia_cron_default_rules', $GLOBALS['elysia_cron_default_rules']);
@@ -288,5 +289,26 @@ function elysia_cron_check_version_update() {
   if ($ver < 20111012) {
     // I only need to rebuild variable cache, so i just set the new version
     variable_set('elysia_cron_version', 20111012);
+  }
+
+  if ($ver < 20111020) {
+    if (EC_DRUPAL_VERSION >= 7) {
+      // D7
+      // Must use "$v" for PHP5.3 running D6 version (detect the error even if it doesn't pass here)
+      db_change_field($v = 'elysia_cron', 'disabled', 'disable', array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE));
+
+    }
+    elseif (EC_DRUPAL_VERSION >= 6) {
+      // D6
+      $ret = array();
+      db_change_field($ret, 'elysia_cron', 'disabled', 'disable', array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE));
+    }
+    else {
+      // D5
+      db_query("alter table {elysia_cron} change disabled disable tinyint(1)");
+    }
+    db_query("update {elysia_cron} set disable = NULL where disable = 0");
+
+    variable_set('elysia_cron_version', 20111020);
   }
 }
