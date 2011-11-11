@@ -1,3 +1,12 @@
+UPGRADE A NEW VERSION
+----------------------
+
+If you are upgrading from an old version of elysia_cron you should simply 
+replace module files. You don't even need to execute the "update.php" drupal
+process: Elysia cron will detect the new version on its first run and updates
+itself automatically.
+
+
 INSTALLATION 
 -------------
 
