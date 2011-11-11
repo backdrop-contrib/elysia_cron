@@ -2,22 +2,87 @@ ELYSIA_CRON
 by Eric Berdondini (gotheric)
 <eric@void.it>
 
-Features:
-- crontab-like scheduling configuration of each job.
-- grouping of jobs in channels (parallel lines of execution).
-- you can disable all jobs, an entire channel or a single job via configuration.
-- force execution of a single cron job on demand
-- change the priority/order of job execution
-- time statistics of each job and of the whole channel.
-- modules can define extra cron tasks, each one with own default cron-rules
-  (site administrators can override them by configuration).
-- administrators can define custom jobs (call to functions with parameters)
-- protection from external cron calling by cron_key or allowed host list.
-- ensure all shutdown hook functions launched by cron jobs are launched inside
-  cron protection (ex: search_cron() will launch search_update_totals() in a
-  shutdown hook).
-
 For installation instructions read INSTALL.TXT
+For module developers API documetation read API.TXT
+
+-----------------------------------------------------------------------------
+FEATURES
+-----------------------------------------------------------------------------
+
+Elysia Cron extends Drupal standard cron, allowing a fine grain control over 
+each task and several ways to add custom cron jobs to your site.
+
+- Set the timings and frequencies of each cron task (you can run some jobs every
+  day at a specified hour, other only monthly and so on...).
+  For each task you can simply choose between some frequently used options 
+  ("once a day", "once a month" ...), or use a powerful "linux crontab"-like 
+  syntax to set the accurate timings. You can even define your frequently used 
+  options to speed up site configuration.
+- Parallel execution of cron task: you can group jobs in channels and execute 
+  then simultaneously: so a task that takes a lot of time to execute won't block
+  other tasks that need to be executed every 5 minutes...
+- You can disable all tasks, an entire channel or a single task.
+- Change the priority/order of task execution.
+- Manual force the execution of a cron tasks.
+- Detailed overview of cron status with time statistics for single tasks and 
+  channels.
+
+- Powerful API for module developers: you can define extra cron tasks for your 
+  modules, each one with own default timings (site administrators can override 
+  them by configuration, other modules via hook_alter). Elysia Cron 2.0 gives a 
+  brand new API support (compatible with 1.0 version) with a lot of features.
+- Administrators can define custom jobs (call to functions with parameters), via
+  the "script" option.
+- Several optimization for frequent cron calls and error handling.
+- Protection from external cron calling by cron_key or allowed host list.
+
+Elysia has no dependencies with contributed modules, and doesn't need to patch
+the core: it can be used in minimal Drupal installation with only core modules.
+It also can be used in a Drupal install profile.
+
+3rd party integration:
+- Ping feature, for external tracking services like host-tracker to tell whether
+  cron is functioning properly on your site.
+- Drush support: you can call "drush elysia-cron" to manually run extended cron.
+- CTools support for exports/backup of task settings.
+- Features support.
+
+-----------------------------------------------------------------------------
+USAGE EXAMPLES
+-----------------------------------------------------------------------------
+
+Elysia cron is usually used in large sites that needs performance optimization.
+
+- Avoid drupal peak loads by distributing heavy load tasks during quiet periods 
+  of the day: for example you may want to rebuild the XML Sitemap of your site 
+  at 2:00AM in the morning, where usually only a few people are visiting your 
+  site. You can even move some tasks to be executed only once a month (log 
+  rotation, old records expiry...).
+
+- If you have tasks that should be executed very often, but don't want to 
+  execute ALL drupal cron tasks that often! For example, you may want to check 
+  for emails that needs to be sent to your users every 2 minutes. Standard cron 
+  is managed in a "monolithic" way, so even if you find out how to execute it 
+  every 2 minutes, you will end in having all cron tasks executed so often, with
+  a lot of performance problems.
+
+- Fine tune cron cache management : drupal cron will invalidate variable cache 
+  every cron run, and this is a great performance problem if you have a 
+  frequently called task. Elysia cron optimize cache management, and doesn't 
+  need to invalidate cache.
+
+- Setup tasks that should be run at a precise time: for example if you want to 
+  send a SimpleNews newsletter every monday at 9:00AM, you can do it.
+
+- Parallel execution: if you have a task that takes a lot of time to execute, 
+  you can setup a different channel for it so it won't block other tasks that 
+  need to be executed every 5 minutes.
+
+- Turn off (disable) a cron task/feature you don't need.
+
+- Debug system cron problems. If your cron does not terminate correctly you can
+  use extended logging, see at each cron timings and disable task to track down 
+  the problem.
 
 -----------------------------------------------------------------------------
 CHANNELS
@@ -36,6 +101,39 @@ If you have 2 channel each one will be checked every 2 minutes (almost usually,
 when the other one is running it will be checked once a minute).
 It you have 10 channels there will be a check every 10 minutes... if you have
 a job that should be executed every 5 minutes it won't do so!
+
+-----------------------------------------------------------------------------
+EXPORT VIA CTOOLS/FEATURES MODULE
+-----------------------------------------------------------------------------
+
+With 2.0 version of Elysia Cron you can use "Bulk Export" functionality of 
+"Chaos Tools Suite" to export cron settings.
+To use it simply enable all modules, go to Structure > Bulk Exporter and
+select the tasks you want to export settings. You can also select all 
+"elysia_cron" prefixed variables to export global options.
+Than generate the module.
+
+The generated code will set the new defaults of elysia cron settings. This way
+you can simply enable it to use them, but you are free to override them in
+the future using the normal settings page.
+Note that if you want to delete all overrides, and return to exported settings,
+you should do a "reset to defaults" from elysia cron settings page. 
+
+You can also use "Features" module to create a Feature module will the settings
+you need.
+Note that if you want to delete the overridden settings it's preferable to use
+the "reset to defaults" elysia cron's button.
+You can use the "Revert components" Features's button, but this will reset also
+all cron statistics (if you are not interested in them you can freely use that
+button).
+
+-----------------------------------------------------------------------------
+DRUSH SUPPORT
+-----------------------------------------------------------------------------
+
+Elysia Cron 2.0 adds a simple support for Drush module.
+
+You can execute the "elysia-cron" command to run cron.
 
 -----------------------------------------------------------------------------
 RULES AND SCRIPT SYNTAX
@@ -86,16 +184,17 @@ There are several ways of specifying multiple date/time values in a field:
  */15 * * * : Execute job every 15 minutes
  0 2,14 * * *: Execute job every day at 2:00 and 14:00
  0 2 * * 1-5: Execute job at 2:00 of every working day
- 0 12 1 */2 1: Execute job every 2 month, at 12:00 of first day of the month OR at
- every monday.
+ 0 12 1 */2 1: Execute job every 2 month, at 12:00 of first day of the month OR
+ at every monday.
 
 4. SCRIPTS
 ---------------------------------
 
-You can use the script section to easily create new jobs (by calling a php function)
-or to change the scheduling of an existing job.
+You can use the script section to easily create new jobs (by calling a php 
+function) or to change the scheduling of an existing job.
 
-Every line of the script can be a comment (if it starts with #) or a job definition.
+Every line of the script can be a comment (if it starts with #) or a job 
+definition.
 
 The syntax of a job definition is:
 <-> [rule] <ctx:CONTEXT> [job]
@@ -104,17 +203,17 @@ The syntax of a job definition is:
 
 * <->: a line starting with "-" means that the job is DISABLED.
 * [rule]: a crontab schedule rule. See above.
-* <ctx:CONTEXT>: set the context of the job.
+* <ctx:CHANNEL>: set the channel of the task.
 * [job]: could be the name of a supported job (for example: 'search_cron') or a
   function call, ending with ; (for example: 'process_queue();').
 
 A comment on the line just preceding a job definition is considered the job 
 description.
 
-Remember that script OVERRIDES all settings on single jobs sections or context 
+Remember that script OVERRIDES all settings on single jobs sections or channel 
 sections of the configuration
 
-5. EXAMPLES OF SCRIPT
+5. EXAMPLE OF SCRIPT
 ---------------------------------
 
 # Search indexing every 2 hours (i'm setting this as the job description)
@@ -135,121 +234,6 @@ sections of the configuration
 # And set its description to "Send daily summary"
 # Send daily summary
 0 1 * * *  send_summary_mail('test@test.com', false);
-
-
------------------------------------------------------------------------------
-MODULE API
------------------------------------------------------------------------------
-
-You can extend cron functionality in you modules by using elysia_cron api.
-With it you can:
-- have more than one cron job
-- have a different schedule rule for each cron job defined
-- set a description for each cron job
-
-To use this functionalities module should implement cronapi hook:
-
-function module_cronapi($op, $job = NULL) {
-  ...
-}
-
-$op can have 3 values:
-- 'list': you should return the list of available jobs, in the form
-  array(
-    array( 'job' => 'description' ),
-    array( 'job' => 'description' ),
-    ...
-  )
-  'job' could be the name of a real function or an identifier used with
-  $op = 'execute' (see below).
-  Warn: 'job' should be a unique identified, even if it's not a function 
-  name.
-- 'rule' : when called with this method, $job variable will contain the 
-  job name you should return the crun rule of. 
-  The rule you return is the default/module preferred schedule rule. 
-  An administrator can always override it to fit his needs.
-- 'execute' : when the system needs to call the job task, if no function 
-  with the same of the job exists, it will call the cronapi with this
-  value and with $job filled with the name of the task to execute.
-  
-Example:
-Assume your module needs 2 cron tasks: one executed every hour (process_queue)
-and one executed once a day (send_summary_mail).
-You can do this with this cronapi:
-
-function module_cronapi($op, $job = NULL) {
-  switch ($op) {
-    case 'list':
-      return array(
-        'module_process_queue' => 'Process queue of new data',
-        'module_send_summary_mail' => 'Send summary of data processed'
-      );
-    case 'rule':
-      if ($job == 'module_process_queue') return '0 * * * *';
-      else return '0 1 * * *';
-    case 'execute':
-      if ($job == 'module_process_queue') {
-        ... do the job ...
-      }
-      // Just for example, module_send_summary_mail is on a separate
-      // function (see below)
-  }
-}
-
-function module_send_summary_mail() {
-  ... do the job ...
-}
-
-HANDLING DEFAULT MODULE_CRON FUNCTION
--------------------------------------
-
-To support standard drupal cron all cron hooks (*_cron function) are
-automatically added to supported jobs, even if you don't declare them
-on cronapi hook (ore you don't implement the hook at all).
-However you can define job description and job rule in the same way as
-above (considering the job an external function).
-
-Example:
-function module_cronapi($op, $job = NULL) {
-  switch ($op) {
-    case 'list':
-      return array(
-        'module_cron' => 'Standard cron process',
-      );
-    case 'rule':
-      return '*/15 * * * *';
-  }
-}
-
-function module_cron() {
-  ... 
-  // this is the standard cron hook, but with cronapi above
-  // it has a default rule (execution every 15 minutes) and
-  // a description
-  ...
-}
-
------------------------------------------------------------------------------
-THEMING & JOB DESCRIPTION
------------------------------------------------------------------------------
-
-If you want to have a nicer cron administration page with all modules
-description, and assuming only a few modules supports cronapi hooks,
-you can add your own description by script (see above) or by 
-'elysia_cron_description' theme function.
-
-For example, in your phptemplate theme, you can declare:
-
-function phptemplate_elysia_cron_description($job) {
-  switch($job) {
-    case 'job 1': return 'First job';
-    case 'job 2': return 'Second job';
-    default: return theme_elysia_cron_description($job);
-  }
-}
-
-Note: module default theme_elysia_cron_description($job) already contains
-some common tasks descriptions.
 
 -----------------------------------------------------------------------------
 CREDITS
