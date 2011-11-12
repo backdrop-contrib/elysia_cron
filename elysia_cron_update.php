@@ -115,10 +115,23 @@ function elysia_cron_check_version_update() {
 
   }
   if ($ver < 20100507) {
-    if (EC_DRUPAL_VERSION >= 6)
+    if (EC_DRUPAL_VERSION >= 6) {
       // D6
       drupal_install_schema('elysia_cron');
 
+      // In ver 20111020 disabled has been renamed to disable, revert it now
+      if (EC_DRUPAL_VERSION >= 7) {
+        // D7
+        // Must use "$v" for PHP5.3 running D6 version (detect the error even if it doesn't pass here)
+        db_change_field($v = 'elysia_cron', 'disable', 'disabled', array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE));
+
+      }
+      elseif (EC_DRUPAL_VERSION >= 6) {
+        // D6
+        $ret = array();
+        db_change_field($ret, 'elysia_cron', 'disable', 'disabled', array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE));
+      }
+    }
     else {
       // D5
       switch ($GLOBALS['db_type']) {
