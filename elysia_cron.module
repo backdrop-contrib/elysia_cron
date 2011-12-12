@@ -951,7 +951,7 @@ function elysia_cron_run($manual_run = false) {
         unset($sem);
         _dco_watchdog('cron', 'Cron channel (%channel) has been running for more than an %stuck_time secs and is most likely stuck. Last job executed: %job', array('%channel' => $channels[$j], '%stuck_time' => $stuck_time, '%job' => $last_job), WATCHDOG_ERROR);
       }
-      if (empty($sem) && !$elysia_cron_settings_by_channel[$channels[$j]]['#data']['disabled'] && time() - $elysia_cron_settings_by_channel[$channels[$j]]['#data']['last_run'] > 60) {
+      if (empty($sem) && !$elysia_cron_settings_by_channel[$channels[$j]]['#data']['disabled']) {
         $jobs = elysia_cron_active_jobs($channels[$j]);
         if (count($jobs)) {
           break;
