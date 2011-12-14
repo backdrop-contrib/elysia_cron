@@ -199,6 +199,10 @@ $GLOBALS['_ec_variables_allowed'] = array(
   'cron_semaphore', 
   'cron_last',
 );
+
+$GLOBALS['_ec_columns'] = array(
+  'name', ' disable', ' rule', ' weight', ' context', ' running', ' last_run', ' last_aborted', ' abort_count', ' last_abort_function', ' last_execution_time', ' execution_count', ' avg_execution_time', ' max_execution_time', ' last_shutdown_time'
+);
  
 function _ec_variable_init() {
   global $_ec_variables, $_ec_variables_allowed;
@@ -415,10 +419,10 @@ function elysia_cron_get($name, $channel = false, $key, $default, $refresh = fal
   
   if ($refresh || !isset($elysia_cron_db_cache[$name])) {
     if (EC_DRUPAL_VERSION >= 7) {
-      $elysia_cron_db_cache[$name] = db_query("select * from {elysia_cron} where name = :name", array(':name' => $name))->fetchAssoc();
+      $elysia_cron_db_cache[$name] = db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron} where name = :name", array(':name' => $name))->fetchAssoc();
     }
     else {
-      $elysia_cron_db_cache[$name] = db_fetch_array(db_query("select * from {elysia_cron} where name = '%s'", $name));
+      $elysia_cron_db_cache[$name] = db_fetch_array(db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron} where name = '%s'", $name));
     }
     
     if (!$elysia_cron_db_cache[$name] && isset($elysia_cron_defaults[$name])) {

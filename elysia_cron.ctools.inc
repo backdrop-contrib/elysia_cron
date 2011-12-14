@@ -27,10 +27,10 @@ function elysia_cron_ctools_export_load($name) {
     $export = $schema['export'];
     
     if (EC_DRUPAL_VERSION >= 7) {
-      $object = db_query("select * from {elysia_cron} where name = :name", array(':name' => $name))->fetch();
+      $object = db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron} where name = :name", array(':name' => $name))->fetch();
     }
     else {
-      $object = db_fetch_object(db_query("select * from {elysia_cron} where name = '%s'", $name));
+      $object = db_fetch_object(db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron} where name = '%s'", $name));
     }
     $default_objects = _ctools_export_get_defaults('elysia_cron', $export);
     
@@ -60,11 +60,11 @@ function elysia_cron_ctools_export_load_all() {
   $export = $schema['export'];
     
   if (EC_DRUPAL_VERSION >= 7) {
-    $objects = db_query("select * from {elysia_cron}")->fetchAll();
+    $objects = db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron}")->fetchAll();
   }
   else {
     $objects = array();
-    while ($o = db_fetch_object(db_query("select * from {elysia_cron}"))) {
+    while ($o = db_fetch_object(db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron}"))) {
       $objects = $o;
     }
   }
