@@ -64,7 +64,8 @@ function elysia_cron_ctools_export_load_all() {
   }
   else {
     $objects = array();
-    while ($o = db_fetch_object(db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron}"))) {
+    $rs = db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron}");
+    while ($o = db_fetch_object($rs)) {
       $objects = $o;
     }
   }
