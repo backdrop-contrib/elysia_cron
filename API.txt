@@ -26,7 +26,8 @@ function hook_cronapi($op, $job = NULL) {
   the "MODULENAME_cron" key. (See examples).
 
 - description: a textual description of the job, used in elysia cron's status
-  page.
+  page. Use the untranslated string, without the "t()" wrapper (elysia_cron
+  will apply it)
 
 - rule: the crontab rule. For example: "*/30 * * * *" to execute the task every
   30 minutes.

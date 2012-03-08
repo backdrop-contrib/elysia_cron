@@ -54,19 +54,19 @@ function elysia_cron_version() {
 function elysia_cron_menu($_dcr_maycache = true) {
   $items = array();
   $items['admin/config/system/cron'] = array(
-    'title' => 'Cron Settings',
-    'description' => 'View and manage cron table',
+    'title' => _dcf_t('Cron Settings'),
+    'description' => _dcf_t('View and manage cron table'),
     'page callback' => 'elysia_cron_admin_page',
     'access arguments' => array('administer elysia_cron'),
   );
   $items['admin/config/system/cron/status'] = array(
     'type' => MENU_DEFAULT_LOCAL_TASK,
-    'title' => 'Status',
+    'title' => _dcf_t('Status'),
     'weight' => 1,
   );
   $items['admin/config/system/cron/settings'] = array(
     'type' => MENU_LOCAL_TASK,
-    'title' => 'Settings',
+    'title' => _dcf_t('Settings'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('elysia_cron_settings_form'),
     'access arguments' => array('administer elysia_cron'),
@@ -74,7 +74,7 @@ function elysia_cron_menu($_dcr_maycache = true) {
   );
   $items['admin/config/system/cron/maintenance'] = array(
     'type' => MENU_LOCAL_TASK,
-    'title' => 'Maintenance',
+    'title' => _dcf_t('Maintenance'),
     'page callback' => 'elysia_cron_maintenance_page',
     'access arguments' => array('administer elysia_cron'),
     'weight' => 3,
@@ -96,7 +96,7 @@ if (EC_DRUPAL_VERSION >= 7) {
   // Override standard cron page
   function elysia_cron_menu_alter(&$items) {
     $items['admin/config/system/cron'] = array(
-      'title' => 'Cron Settings',
+      'title' => _dcf_t('Cron Settings'),
       'description' => 'View and manage cron table',
       'page callback' => 'elysia_cron_admin_page',
       'access arguments' => array('administer elysia_cron'),
@@ -1221,15 +1221,18 @@ function elysia_cron_is_running() {
 }
 
 /**
- * Obtain job description
+ * Obtain job description (translated)
  */
 function elysia_cron_description($job) {
   global $elysia_cron_settings;
 
   if (!empty($elysia_cron_settings[$job]['description'])) {
-    return $elysia_cron_settings[$job]['description'];
+    $desc = $elysia_cron_settings[$job]['description'];
   }
-  return _dco_theme('elysia_cron_description', array('job' => $job));
+  else {
+    $desc = _dco_theme('elysia_cron_description', array('job' => $job));
+  }
+  return t($desc);
 }
 
 /*******************************************************************************
@@ -1251,7 +1254,7 @@ function elysia_cron_theme() {
 }
 
 /**
- * You can theme this function to provide your description for cron functions, if they do not provide one.
+ * You can theme this function to provide your (untranslated) descriptions for cron functions, if they do not provide one.
  */
 function theme_elysia_cron_description($variables) {
   extract(_dcf_theme_signature(array('job' => $variables)));

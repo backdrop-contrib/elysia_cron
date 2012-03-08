@@ -30,6 +30,10 @@ function _dcf_internal_path($path) {
   return $path;
 }
 
+function _dcf_t($string) {
+  return $string;
+}
+
 function _dco_watchdog($type, $message, $variables = array(), $severity = WATCHDOG_NOTICE, $link = NULL) { // WARN d7 changed WATCHDOG_ costants
   return watchdog($type, $message, $variables, $severity, $link);
 }

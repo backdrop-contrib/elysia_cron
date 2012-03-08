@@ -19,12 +19,12 @@ function elysia_cron_admin_page() {
   global $elysia_cron_settings, $elysia_cron_settings_by_channel, $elysia_cron_current_channel, $cron_completed, $cron_completed_time;
 
   $v = variable_get('elysia_cron_disabled', false);
-  $output .= '<p>Global disable: <i>' . ($v ? '<span class="warn">YES</span>' : 'no') . '</i></p>';
-  $output .= '<p>Last channel executed: <i>' . (($c = elysia_cron_last_channel()) ? $c : t('n/a')) . '</i></p>';
+  $output .= '<p>' . t('Global disable') . ': <i>' . ($v ? '<span class="warn">' . t('YES') . '</span>' : 'no') . '</i></p>';
+  $output .= '<p>' . t('Last channel executed') . ': <i>' . (($c = elysia_cron_last_channel()) ? $c : t('n/a')) . '</i></p>';
 
   if (EC_DRUPAL_VERSION < 7) {
     if (_ec_variable_get('elysia_cron_semaphore', 0)) {
-      $output .= '<p><span class="warn">Global semaphore active since ' . elysia_cron_date(_ec_variable_get('elysia_cron_semaphore', 0)) . '</span></p>';
+      $output .= '<p><span class="warn">' . t('Global semaphore active since !date', array('!date' => elysia_cron_date(_ec_variable_get('elysia_cron_semaphore', 0)))) . '</span></p>';
     }
   }
 
@@ -35,22 +35,22 @@ function elysia_cron_admin_page() {
     }
   }
   if ($running) {
-    $output .= '<p>Running channels: <span class="warn">' . $running . '</span></p>';
+    $output .= '<p>' . t('Running channels') . ': <span class="warn">' . $running . '</span></p>';
   }
 
-  $output .= '<p>Last run: ' . elysia_cron_date(_ec_variable_get('elysia_cron_last_run', 0)) . '</p>';
+  $output .= '<p>' . t('Last run') . ': ' . elysia_cron_date(_ec_variable_get('elysia_cron_last_run', 0)) . '</p>';
 
   foreach ($elysia_cron_settings_by_channel as $channel => $data) {
     $running = elysia_cron_is_channel_running($channel);
-    $output .= '<h3>Channel: ' . $channel . ($running ? ' (Running since ' . elysia_cron_date($running) . ')' : '') . ($data['#data']['disabled'] ? ' <span class="warn">(DISABLED)</span>' : '') . '</h3>';
-    $output .= '<p>Last run: ' . elysia_cron_date($data['#data']['last_run']) . '</p>';
-    $output .= '<p>Last execution time: ' . $data['#data']['last_execution_time'] . 's (Shutdown: ' . $data['#data']['last_shutdown_time'] . 's) (Avg total: ' . $data['#data']['avg_execution_time'] . 's, Max total: ' . $data['#data']['max_execution_time'] . 's)</p>';
-    $output .= '<p>Execution count: ' . $data['#data']['execution_count'] . '</p>';
+    $output .= '<h3>' . t('Channel') . ': ' . $channel . ($running ? ' (' . t('Running since !date', array('!date' => elysia_cron_date($running))) . ')' : '') . ($data['#data']['disabled'] ? ' <span class="warn">(' . t('DISABLED') . ')</span>' : '') . '</h3>';
+    $output .= '<p>' . t('Last run') . ': ' . elysia_cron_date($data['#data']['last_run']) . '</p>';
+    $output .= '<p>' . t('Last execution time') . ': ' . $data['#data']['last_execution_time'] . 's ' . t('(Shutdown: !shutdown) (Avg total: !avgtotal, Max total: !maxtotal)', array('!shutdown' => $data['#data']['last_shutdown_time'] . 's', '!avgtotal' => $data['#data']['avg_execution_time'] . 's', '!maxtotal' => $data['#data']['max_execution_time'] . 's')) . '</p>';
+    $output .= '<p>' . t('Execution count') . ': ' . $data['#data']['execution_count'] . '</p>';
     if ($data['#data']['last_aborted']) {
-      $output .= '<p>Last aborted: <span class="warn">On function ' . $data['#data']['last_abort_function'] . '</span></p>';
+      $output .= '<p>' . t('Last aborted') . ': <span class="warn">' . t('On function !function', array('!function' => $data['#data']['last_abort_function'])) . '</span></p>';
     }
     if ($data['#data']['abort_count']) {
-      $output .= '<p>Abort count: <span class="warn">' . $data['#data']['abort_count'] . '</span></p>';
+      $output .= '<p>' . t('Abort count') . ': <span class="warn">' . $data['#data']['abort_count'] . '</span></p>';
     }
 
     $rows = array();
@@ -73,11 +73,11 @@ function elysia_cron_admin_page() {
         );
       }
     }
-    $output .= _dco_theme('table', array('header' => array('Job / Rule', 'Last run', 'Last exec time', 'Exec count', 'Avg/Max Exec time'), 'rows' => $rows));
+    $output .= _dco_theme('table', array('header' => array(t('Job / Rule'), t('Last run'), t('Last exec time'), t('Exec count'), t('Avg/Max Exec time')), 'rows' => $rows));
   }
 
-  $output .= '<p>Notes: job times don\'t include shutdown times (only shown on channel times).</p>';
-  $output .= '<p>If an abort occours usually the job is not properly terminated, and so job timings can be inaccurate or wrong.</p>';
+  $output .= '<p>' . t('Notes: job times don\'t include shutdown times (only shown on channel times).') . '</p>';
+  $output .= '<p>' . t('If an abort occours usually the job is not properly terminated, and so job timings can be inaccurate or wrong.') . '</p>';
 
   $aoutput[] = array(
     '#type' => 'markup',
@@ -98,7 +98,7 @@ function elysia_cron_settings_form() {
     '#title' => t('Click for help and cron rules and script syntax'),
     '#collapsible' => true,
     '#collapsed' => true,
-    '#description' => <<<EOT
+    '#description' => t(<<<EOT
 <h3>Fields order</h3>
 <pre>
  +---------------- minute (0 - 59)
@@ -176,7 +176,7 @@ or to change the scheduling of an existing job.</p>
 0 1 * * *  send_summary_mail('test@test.com', false);
 </pre>
 EOT
-,
+),
   );
 
   $form['prefix_2'] = array(
@@ -257,8 +257,8 @@ EOT
     '#type' => 'select',
     '#default_value' => variable_get('elysia_cron_debug_messages', 0),
     '#options' => array(
-      0 => 'Disabled',
-      1 => 'Enabled',
+      0 => t('Disabled'),
+      1 => t('Enabled'),
     ),
     '#description' => t('Enable extended logging (in watchdog)'),
   );
