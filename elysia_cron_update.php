@@ -101,7 +101,7 @@ function elysia_cron_check_version_update() {
           variable_set($vn, unserialize($v->value));
         }
         else {
-          _dco_watchdog('cron', 'Error in update, cant convert %name (value: %value)', array('%name' => $v->name, '%value' => $v->value), WATCHDOG_ERROR);
+          elysia_cron_error('Error in update, cant convert %name (value: %value)', array('%name' => $v->name, '%value' => $v->value), true);
         }
 
         variable_del($v->name);

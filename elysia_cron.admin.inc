@@ -429,7 +429,7 @@ EOT
   );
 
   if (!empty($_POST) && form_get_errors()) {
-    drupal_set_message(t('The settings have not been saved because of the errors.'), 'error');
+    elysia_cron_error('The settings have not been saved because of the errors.');
   }
 
   return _dcr_form($form);
@@ -656,10 +656,10 @@ function elysia_cron_settings_form_submit($_dco_form, &$_dco_form_state) {
     }
   }
   if ($op == t('Reset to defaults')) {
-    drupal_set_message(t('The configuration options have been reset to their default values.'));
+    elysia_cron_message('The configuration options have been reset to their default values.');
   }
   else {
-    drupal_set_message(t('The configuration options have been saved.'));
+    elysia_cron_message('The configuration options have been saved.');
   }
 }
 
@@ -683,78 +683,24 @@ function elysia_cron_run_form() {
 function elysia_cron_run_form_submit($_dco_form, &$_dco_form_state) {
   // Run cron manually from Cron form.
   if (elysia_cron_run()) {
-    drupal_set_message(t('Cron run successfully.'));
+    elysia_cron_message('Cron run successfully.');
   }
   else {
-    drupal_set_message(t('Cron run failed.'), 'error');
+    elysia_cron_error('Cron run failed.');
   }
 
   drupal_goto(_dcf_internal_path('admin/config/system/cron'));
 }
 
 function elysia_cron_execute_page($job = false) {
-  global $cron_completed, $cron_executing_job, $conf;
-
   if (!$job) {
-    drupal_set_message(t('No job specified'), 'error');
+    elysia_cron_error('No job specified');
     drupal_goto(_dcf_internal_path('admin/config/system/cron'));
   }
-
-  $running = false;
-  if (elysia_cron_is_job_running($job, false)) {
-    if (time() - elysia_cron_get_job_last_run($job, 0) > variable_get('elysia_cron_stuck_time', 3600)) {
-      drupal_set_message(t('Job %job already running, but is probably stuck, so i consider it as terminated', array('%job' => $job)));
-    }
-    else {
-      drupal_set_message(t('Job %job already running', array('%job' => $job)));
-      $running = true;
-    }
-  }
-
-  if (!$running) {
-    $cron_completed = false;
-    $cron_executing_job = $job;
-
-    if (EC_DRUPAL_VERSION < 7) {
-      // Some modules (feedapi, ipaper...) uses the internal "cron_semaphore" variable to detect
-      // start time of cron process. I'll set this only in memory for that purpose.
-      // (In normal drupal cron execution that is done by a variable_set just before this call,
-      // but i need to set this manually if drupal cron is bypassed)
-      $conf['cron_semaphore'] = time();
-    }
-
-    // Register shutdown callback
-    register_shutdown_function('elysia_cron_execute_page_cleanup');
-
-    elysia_cron_initialize();
-    elysia_cron_execute($job);
-
-    if (EC_DRUPAL_VERSION < 7) {
-      _ec_variable_del('cron_semaphore');
-      $conf['cron_semaphore'] = false;
-    }
-
-    $cron_completed = true;
-
-    drupal_set_message(t('Job executed'));
-  }
+  
+  elysia_cron_run_job($job, true, true, false); // Run also if disabled or not ready (but not if it's already running)
 
   drupal_goto(_dcf_internal_path('admin/config/system/cron'));
-}
-
-function elysia_cron_execute_page_cleanup() {
-  global $cron_completed, $cron_executing_job;
-
-  if ($cron_completed) {
-    return;
-  }
-
-  // See if the semaphore is still locked.
-  if (elysia_cron_is_job_running($cron_executing_job)) {
-    _dco_watchdog('cron', 'Unexpected termination of cron job %job manually started, aborted.', array('%job' => $cron_executing_job), WATCHDOG_WARNING);
-
-    elysia_cron_set_job_running($cron_executing_job, 0);
-  }
 }
 
 function elysia_cron_maintenance_page() {
@@ -769,7 +715,7 @@ function elysia_cron_reset_statistics_form() {
   $form['fieldset'] = array(
     '#type' => 'fieldset',
     '#title' => t('Reset statistics'),
-    '#description' => t('Deletes all cron execution statitics (Last run, last exec time, exec count, avg/max exec time...). Do not touch cron settings.<br /><b>This operation could not be reverted</b><br />'),
+    '#description' => t('Deletes all cron execution statistics (Last run, last exec time, exec count, avg/max exec time...). Do not touch cron settings.<br /><b>This operation could not be reverted</b><br />'),
   );
   $form['fieldset']['reset'] = array(
     '#type' => 'submit',
@@ -784,7 +730,7 @@ function elysia_cron_reset_statistics_form() {
 function elysia_cron_reset_statistics_form_submit($_dco_form, &$_dco_form_state) {
   elysia_cron_reset_stats();
   
-  drupal_set_message(t('Reset done.'));
+  elysia_cron_message('Reset done.');
   drupal_goto(_dcf_internal_path('admin/config/system/cron/maintenance'));
 }
 
