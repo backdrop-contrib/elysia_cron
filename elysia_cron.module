@@ -126,11 +126,18 @@ function elysia_cron_init() {
   }
 }
 
+function elysia_cron_exit() {
+  global $elysia_cron_exit_phase;
+  $elysia_cron_exit_phase = true;
+}
+
 /**
  * Hook cron is invoked only by standard drupal cron.
  * It's used to replace drupal cron.
  */
 function elysia_cron_cron() {
+  global $elysia_cron_exit_phase, $elysia_cron_drush;
+  
   // If invoked "core-cron" via drush i'll redirect to elysia-cron handler
   if (function_exists('elysia_cron_drush_detect') && elysia_cron_drush_detect()) {
     elysia_cron_drush_invoke(true);
@@ -140,8 +147,8 @@ function elysia_cron_cron() {
   if (variable_get('cron_last', 0) == 0) {
     return;
   }
-  // If the path is 'admin/*', or if the user is not anonymous, this is a manual cron run (probably by admin/logs/status)
-  $manual_run = (arg(0) == 'admin') || !empty($GLOBALS['user']->uid);
+  // If the path is 'admin/*', or if the user is not anonymous, this is a manual cron run (probably by admin/logs/status), but not if we are in the exit phase (= this a "poormanscron" run)
+  $manual_run = empty($elysia_cron_exit_phase) && ((arg(0) == 'admin') || !empty($GLOBALS['user']->uid));
 
   $result = elysia_cron_run($manual_run);
   
@@ -154,7 +161,17 @@ function elysia_cron_cron() {
     else {
       elysia_cron_message('Cron run failed, disabled or nothing to do');
     }
+    // In manual execution it's better to set cron_last variable in standard way (so the user sees the execution time updates). This invalidates variable cache, but it's a manual execution, it should be not a great performance problem.
+    if (empty($elysia_cron_drush))
+      variable_set('cron_last', time());
+    
     drupal_goto(_dcf_internal_path('admin/reports/status'));
+  }
+  
+  // If we are in "poormanscron" mode it's better to force setting of cron_last. This invalidates variable cache, but is needed for right execution check.
+  // @see system_run_automated_cron() in system.module
+  if (!empty($elysia_cron_exit_phase)) {
+    variable_set('cron_last', time());
   }
 
   exit();
@@ -1384,7 +1401,6 @@ function elysia_cron_internal_execute_channel_cleanup() {
  */
 function elysia_cron_internal_execute_channel_completed() {
   global $elysia_cron_settings, $elysia_cron_current_channel, $cron_completed, $cron_completed_time;
-  //dprint("completed ".$elysia_cron_current_channel);
 
   // Record cron time
   _ec_variable_set('cron_last', time());
