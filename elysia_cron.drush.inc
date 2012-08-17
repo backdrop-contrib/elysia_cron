@@ -8,9 +8,16 @@ function elysia_cron_drush_detect() {
   return (!isset($_SERVER['SERVER_SOFTWARE']) && (php_sapi_name() == 'cli' || (is_numeric($_SERVER['argc']) && $_SERVER['argc'] > 0))) && function_exists('drush_main');
 }
 
-function elysia_cron_drush_exit() {
-  drush_bootstrap_finish();
-  drush_die();
+function elysia_cron_drush_die() {
+  if (function_exists('drush_bootstrap_finish')) {
+    // Only in Drush5
+    drush_bootstrap_finish();
+    drush_die();
+  } else {
+    // Drush4
+    drush_set_context("DRUSH_EXECUTION_COMPLETED", TRUE);
+    exit();
+  }
 }
 
 function elysia_cron_drush_invoke($replace_core_cron = false) {
@@ -23,7 +30,7 @@ function elysia_cron_drush_invoke($replace_core_cron = false) {
   }
   
   call_user_func_array('drush_elysia_cron_run_wrapper', $args);
-  elysia_cron_drush_exit();
+  elysia_cron_drush_die();
 }
 
 /**
