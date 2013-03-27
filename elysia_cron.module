@@ -520,7 +520,7 @@ function elysia_cron_get_channel_last_abort_function($channel, $default = '', $r
 }
 
 function elysia_cron_set_channel_last_abort_function($channel, $job) {
-  return elysia_cron_set($channel, true, array('last_abort_function' => $v));
+  return elysia_cron_set($channel, true, array('last_abort_function' => $job));
 }
 
 function elysia_cron_get_channel_stats($channel, $refresh = false) {
