@@ -40,31 +40,65 @@ function elysia_cron_admin_page() {
 
   $output .= '<p>' . t('Last run') . ': ' . elysia_cron_date(_ec_variable_get('elysia_cron_last_run', 0)) . '</p>';
 
+  $rows = array();
+  
+  $ipath = url(drupal_get_path('module', 'elysia_cron') . '/images/icon_');
+  
   foreach ($elysia_cron_settings_by_channel as $channel => $data) {
     $running = elysia_cron_is_channel_running($channel);
-    $output .= '<h3>' . t('Channel') . ': ' . $channel . ($running ? ' (' . t('Running since !date', array('!date' => elysia_cron_date($running))) . ')' : '') . ($data['#data']['disabled'] ? ' <span class="warn">(' . t('DISABLED') . ')</span>' : '') . '</h3>';
-    $output .= '<p>' . t('Last run') . ': ' . elysia_cron_date($data['#data']['last_run']) . '</p>';
-    $output .= '<p>' . t('Last execution time') . ': ' . $data['#data']['last_execution_time'] . 's ' . t('(Shutdown: !shutdown) (Avg total: !avgtotal, Max total: !maxtotal)', array('!shutdown' => $data['#data']['last_shutdown_time'] . 's', '!avgtotal' => $data['#data']['avg_execution_time'] . 's', '!maxtotal' => $data['#data']['max_execution_time'] . 's')) . '</p>';
-    $output .= '<p>' . t('Execution count') . ': ' . $data['#data']['execution_count'] . '</p>';
-    if ($data['#data']['last_aborted']) {
-      $output .= '<p>' . t('Last aborted') . ': <span class="warn">' . t('On function !function', array('!function' => $data['#data']['last_abort_function'])) . '</span></p>';
+    $rows[] = array(
+      array('data' => '<h3>' . t('Channel') . ': ' . $channel . ($data['#data']['disabled'] ? ' <span class="warn">(' . t('DISABLED') . ')</span>' : '') . '</h3>', 'colspan' => 2, 'header' => 'true'),
+      array('data' => elysia_cron_date($data['#data']['last_run']), 'header' => 'true'),
+      array('data' => $data['#data']['last_execution_time'] . 's ' . t('(Shutdown: !shutdown)', array('!shutdown' => $data['#data']['last_shutdown_time'] . 's')), 'header' => 'true'),
+      array('data' => $data['#data']['execution_count'], 'header' => 'true'),
+      array('data' => $data['#data']['avg_execution_time'] . 's / ' . $data['#data']['max_execution_time'] . 's', 'header' => 'true'),
+    );
+    $messages = '';
+    if ($running) {
+      $messages .= t('Running since !date', array('!date' => elysia_cron_date($running))) . '<br />';
     }
-    if ($data['#data']['abort_count']) {
-      $output .= '<p>' . t('Abort count') . ': <span class="warn">' . $data['#data']['abort_count'] . '</span></p>';
+    if ($data['#data']['last_aborted'] || $data['#data']['abort_count']) {
+      $msg = array();
+      if ($data['#data']['last_aborted']) {
+        $msg[] = t('Last aborted') . ': <span class="warn">' . t('On function !function', array('!function' => $data['#data']['last_abort_function'])) . '</span>';
+      }
+      if ($data['#data']['abort_count']) {
+        $msg[] = t('Abort count') . ': <span class="warn">' . $data['#data']['abort_count'] . '</span>';
+      }
+      $messages .= implode(', ', $msg) . '<br />';
     }
-
-    $rows = array();
+    if ($messages) {
+      $rows[] = array( '', '', array('data' => $messages, 'colspan' => 4, 'header' => true) );
+      $rows[] = array( array('data' => '', 'colspan' => 6) );
+    }
+    
     foreach ($data as $job => $conf) {
+      $icon = 'idle';
+      $caption = '<b>' . $job . '</b>';
+      $tip = t('Idle');
+      if ($conf['disabled']) {
+        $icon = 'disabled';
+        $caption = '<strike><b>' . $job . '</b></strike>';
+        $tip = t('Disabled');
+      }
+      elseif (!empty($conf['running'])) {
+        $icon = 'running';
+        $caption = '<b><u>' . $job . '</u></b>';
+        $tip = t('Running');
+      }
+      elseif (elysia_cron_should_run($conf)) {
+        $icon = 'waiting';
+        $tip = t('Waiting for execution');
+      }
+      
       if ($job != '#data') {
         $rows[] = array(
-          (!empty($conf['disabled']) ? '<strike>' . $job . '</strike>' : (empty($conf['running']) ? '<b>' . $job . '</b>' : '<b><u>' . $job . '</u></b> <small title="' . t('Running') . '">(R)</small>')) . (elysia_cron_should_run($conf) ? ' <small title="' . t('Waiting for execution') . '">(w)</small>' : ''),
-          array(
-            'data' => '<i>' . elysia_cron_description($job) . '</i> ' .
-          '[' . _dco_l(t('run'), _dcf_internal_path('admin/config/system/cron/execute/') . $job, array('attributes' => array('onclick' => 'return confirm("' . t('Force execution of !job?', array('!job' => $job)) . '");'))) . ']',
-            'colspan' => 4,
-          ),
+          array( 'data' => '<img src="' . $ipath . $icon . '.png" width="16" height="16" align="top" alt="' . $tip . '" title="' . $tip . '" />', 'align' => 'right' ),
+          array( 'data' => $caption . ': <i>' . elysia_cron_description($job) . '</i> ', 'colspan' => 4 ),
+          array( 'data' => _dco_l(t('Force run'), _dcf_internal_path('admin/config/system/cron/execute/') . $job, array('attributes' => array('onclick' => 'return confirm("' . t('Force execution of !job?', array('!job' => $job)) . '");'))), 'align' => 'right'),
         );
         $rows[] = array(
+          '',
           $conf['rule'] . (!empty($conf['weight']) ? ' <small>(' . t('Weight') . ': ' . $conf['weight'] . ')</small>' : ''),
           elysia_cron_date($conf['last_run']),
           $conf['last_execution_time'] . 's',
@@ -73,11 +107,23 @@ function elysia_cron_admin_page() {
         );
       }
     }
-    $output .= _dco_theme('table', array('header' => array(t('Job / Rule'), t('Last run'), t('Last exec time'), t('Exec count'), t('Avg/Max Exec time')), 'rows' => $rows));
+    $rows[] = array('&nbsp;','','','','','');
   }
-
-  $output .= '<p>' . t('Notes: job times don\'t include shutdown times (only shown on channel times).') . '</p>';
-  $output .= '<p>' . t('If an abort occours usually the job is not properly terminated, and so job timings can be inaccurate or wrong.') . '</p>';
+  
+  $output .= _dco_theme('table', array('header' => array('', t('Job / Rule'), t('Last run'), t('Last exec time'), t('Exec count'), t('Avg/Max Exec time')), 'rows' => $rows));
+  $output .= '<br />';
+  
+  $output .= _dco_theme('table', array(
+    'header' => array(t('Legend')),
+    'rows' => array(
+      array('<img src="' . $ipath . 'idle.png" width="16" height="16" align="top" alt="' . $tip . '" title="' . $tip . '" /> ' . t('Job shouldn\'t do anything right now')),
+      array('<img src="' . $ipath . 'waiting.png" width="16" height="16" align="top" alt="' . $tip . '" title="' . $tip . '" /> ' . t('Job is ready to be executed, and is waiting for system cron call')),
+      array('<img src="' . $ipath . 'running.png" width="16" height="16" align="top" alt="' . $tip . '" title="' . $tip . '" /> ' . t('Job is running right now')),
+      array('<img src="' . $ipath . 'disabled.png" width="16" height="16" align="top" alt="' . $tip . '" title="' . $tip . '" /> ' . t('Job is disabled by settings, and won\'t run until enabled again')),
+      array(t('Notes: job times don\'t include shutdown times (only shown on channel times).')),
+      array(t('If an abort occours usually the job is not properly terminated, and so job timings can be inaccurate or wrong.')),
+    ),
+  ));
 
   $aoutput[] = array(
     '#type' => 'markup',
