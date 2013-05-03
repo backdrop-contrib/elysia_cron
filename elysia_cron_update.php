@@ -25,7 +25,7 @@ function elysia_cron_check_version_update() {
       'elysia_cron_version',
     );
 
-    $rs = db_query('select * from {variable} where name like "elysia_cron_%%"');
+    $rs = db_query("select * from {variable} where name like 'elysia_cron_%%'");
     while ($v = db_fetch_object($rs)) {
       if (!in_array($v->name, $unchanged)) {
         $vn = false;
@@ -178,7 +178,7 @@ function elysia_cron_check_version_update() {
       }
     }
 
-    $rs = db_query('select * from {variable} where name like "ec_%%" or name like "ecc_%%"');
+    $rs = db_query("select * from {variable} where name like 'ec_%%' or name like 'ecc_%%'");
     $data = array();
     $todelete = array();
     while ($v = db_fetch_object($rs)) {
