@@ -60,7 +60,7 @@ function elysia_cron_admin_page() {
     if ($data['#data']['last_aborted'] || $data['#data']['abort_count']) {
       $msg = array();
       if ($data['#data']['last_aborted']) {
-        $msg[] = t('Last aborted') . ': <span class="warn">' . t('On function !function', array('!function' => $data['#data']['last_abort_function'])) . '</span>';
+        $msg[] = t('Last aborted') . (!empty($data['#data']['last_abort_function']) ? ': <span class="warn">' . t('On function !function', array('!function' => $data['#data']['last_abort_function'])) . '</span>' : '');
       }
       if ($data['#data']['abort_count']) {
         $msg[] = t('Abort count') . ': <span class="warn">' . $data['#data']['abort_count'] . '</span>';
