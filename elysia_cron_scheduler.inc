@@ -20,6 +20,10 @@ function elysia_cron_should_run($conf, $now = -1, $ignore_disable = false, $igno
 }
 
 function _elysia_cron_next_run($conf) {
+  if (!isset($conf['rule'])) {
+    return false;
+  }
+  
   $ranges = array(
     array(0, 59),
     array(0, 23),
