@@ -1613,7 +1613,7 @@ function elysia_cron_cronapi($op, $job = false) {
       $queue->createQueue();
       
       $items['queue_' . $queue_name] = array(
-        'description' => $queue_name . ' queue processing (Items count: <strong>' . $queue->numberOfItems() . '</strong>, worker max duration: <strong>' . $info['time'] . 's</strong>)',
+        'description' => $queue_name . ' queue processing (Items count: <strong>' . $queue->numberOfItems() . '</strong>, worker max duration: <strong>' . (isset($info['time']) ? $info['time'] . 's' : t('unspecified') . ' (15s)') . '</strong>)',
         'rule' => variable_get('elysia_cron_queue_default_rule', false),
         'weight' => variable_get('elysia_cron_queue_default_weight', 100),
         'callback' => 'elysia_cron_queue_exec',
