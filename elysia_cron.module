@@ -1069,15 +1069,18 @@ function elysia_cron_run($manual_run = false, $ignore_disable = false, $ignore_t
   // Check for CRON_KEY or ALLOWED_HOSTS
   if (!$manual_run) {
     $cron_key = variable_get('cron_key', '');
-    if ($cron_key && !user_access('administer elysia_cron') && (empty($_GET['cron_key']) || $_GET['cron_key'] != $cron_key)) {
+    if ($cron_key && (empty($_GET['cron_key']) || $_GET['cron_key'] != $cron_key)) {
       elysia_cron_debug("Cron key mismatch, skipping run");
       return;
     }
     $allowed_hosts = variable_get('elysia_cron_allowed_hosts', false);
-    if ($allowed_hosts && !user_access('administer elysia_cron') && !in_array(ip_address(), explode(",", $allowed_hosts))) {
+    if ($allowed_hosts && !in_array(ip_address(), explode(",", $allowed_hosts))) {
       elysia_cron_debug("Cron ip address mismatch, skipping run");
       return;
     }
+  }
+  elseif(!user_access('administer elysia_cron')) {
+    return;
   }
   
   elysia_cron_prepare_run($manual_run);

@@ -728,7 +728,7 @@ function elysia_cron_run_form() {
 
 function elysia_cron_run_form_submit($_dco_form, &$_dco_form_state) {
   // Run cron manually from Cron form.
-  if (elysia_cron_run()) {
+  if (elysia_cron_run(TRUE)) {
     elysia_cron_message('Cron run successfully.');
   }
   else {
