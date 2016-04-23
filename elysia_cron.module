@@ -99,7 +99,8 @@ if (EC_DRUPAL_VERSION >= 7) {
       'description' => 'View and manage cron table',
       'page callback' => 'elysia_cron_admin_page',
       'access arguments' => array('administer elysia_cron'),
-    );
+      'file' => NULL,
+    ) + $items['admin/config/system/cron'];
   }
 }
 
