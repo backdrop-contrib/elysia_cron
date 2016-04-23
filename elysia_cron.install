@@ -54,7 +54,7 @@ function elysia_cron_schema() {
       ),
       'last_abort_function' => array(
         'type' => 'varchar',
-        'length' => 32,
+        'length' => 128,
         'no export' => TRUE,
       ),
       'last_execution_time' => array(
@@ -157,4 +157,15 @@ function elysia_cron_update_1() {
     variable_set('cron_key', $cron_key);
   }
   variable_del('elysia_cron_key');
+}
+
+/**
+ * Increase elysia_cron last_abort_function size from 32 to 128 characters
+ */
+function elysia_cron_update_2() {
+  db_change_field('elysia_cron', 'last_abort_function', 'last_abort_function', array(
+   'type' => 'varchar',
+   'length' => 128,
+   'no export' => TRUE,
+  ));
 }

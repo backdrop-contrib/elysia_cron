@@ -1370,6 +1370,13 @@ function elysia_cron_execute_aborted($channel) {
     }
   }
 
+  // In case the last function to run is longer than 128 chars, we cap the
+  // length prior to placing in the database.
+  $last_job = trim($last_job);
+  if (strlen($last_job) > 128) {
+    $last_job = substr($last_job, 0, 128);
+  }
+
   elysia_cron_set($channel, true, array(
     'running' => 0, //time(),
     'last_aborted' => 1,
@@ -1377,7 +1384,7 @@ function elysia_cron_execute_aborted($channel) {
     'last_abort_function' => $last_job,
   ));
 
-  return trim($last_job);
+  return $last_job;
 }
 
 /**
