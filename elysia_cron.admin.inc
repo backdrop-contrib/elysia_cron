@@ -41,8 +41,8 @@ function elysia_cron_admin_page() {
   $output .= '<p>' . t('Last run') . ': ' . elysia_cron_date(_ec_variable_get('elysia_cron_last_run', 0)) . '</p>';
 
   $rows = array();
-  
-  $ipath = url(drupal_get_path('module', 'elysia_cron') . '/images/icon_');
+
+  $ipath = file_create_url(drupal_get_path('module', 'elysia_cron') . '/images/icon_');
   
   foreach ($elysia_cron_settings_by_channel as $channel => $data) {
     $running = elysia_cron_is_channel_running($channel);
