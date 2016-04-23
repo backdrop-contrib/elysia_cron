@@ -1607,6 +1607,11 @@ function elysia_cron_cronapi($op, $job = false) {
     drupal_alter('cron_queue_info', $queues);
     
     foreach ($queues as $queue_name => $info) {
+      if (!empty($info['skip on cron'])) {
+        // Do not run if queue wants to skip.
+        continue;
+      }
+
       // Make sure every queue exists. There is no harm in trying to recreate an
       // existing queue.
       $queue = DrupalQueue::get($queue_name);
