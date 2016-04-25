@@ -76,7 +76,7 @@ function drush_elysia_cron_run_wrapper($op = false, $target = false) {
   global $elysia_cron_drush;
 
   if (variable_get('maintenance_mode', 0)) {
-    drush_print('The site is in maintenance mode.')
+    drush_print('The site is in maintenance mode.');
 
     $choice = drush_choice(array(
       0 => dt('abort'),
