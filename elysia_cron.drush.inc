@@ -23,12 +23,12 @@ function elysia_cron_drush_die() {
 function elysia_cron_drush_invoke($replace_core_cron = false) {
   $args = drush_get_arguments();
   array_shift($args);
-  
+
   // If invoked like "core-cron" i do the same as that: execute "run"
   if ($replace_core_cron && empty($args)) {
     $args = array("run");
   }
-  
+
   call_user_func_array('drush_elysia_cron_run_wrapper', $args);
   elysia_cron_drush_die();
 }
@@ -73,23 +73,28 @@ function elysia_cron_drush_command() {
  * wraps the elysia_cron_run function, passing manual = true
  */
 function drush_elysia_cron_run_wrapper($op = false, $target = false) {
-  /*
-    drush_log("test notice", "notice");
-    drush_log("test ok", "ok");
-    drush_log("test completed", "completed");
-    drush_log("test warning", "warning");
-    drush_log("test error", "error");
-    drush_print("print");
-  */
   global $elysia_cron_drush;
-  
+
+  if (variable_get('maintenance_mode', 0)) {
+    drush_print('The site is in maintenance mode.')
+
+    $choice = drush_choice(array(
+      0 => dt('abort'),
+      1 => dt('continue'),
+    ), 'Would you like to continue or abort this cron run?');
+    if ($choice == 0) {
+      drush_set_error('Cron did not run.');
+      return;
+    }
+  }
+
   $quiet = drush_get_option("quiet", false);
   $verbose = drush_get_option("verbose", false);
   if (!$verbose) {
     $verbose = drush_get_option("elysia-cron-verbose", false);
   }
-  $elysia_cron_drush = $quiet ? 1 : !$verbose ? 2 : 3; 
-  
+  $elysia_cron_drush = $quiet ? 1 : !$verbose ? 2 : 3;
+
   switch ($op) {
     case 'list':
       global $elysia_cron_settings_by_channel;
@@ -163,18 +168,17 @@ function drush_elysia_cron_run_wrapper($op = false, $target = false) {
       if (!empty($target)) {
         if ($target{0} == '@') {
           elysia_cron_set_channel_disabled(substr($target, 1), $op == 'disable');
-        } else {
+        }
+        else {
           elysia_cron_set_job_disabled($target, $op == 'disable');
         }
         drush_log("Done", "ok");
-      } else {
+      }
+      else {
         drush_set_error('Target not specified');
       }
-      
       break;
 
-      break;
-      
     default:
       drush_print_help(drush_get_command());
   }
