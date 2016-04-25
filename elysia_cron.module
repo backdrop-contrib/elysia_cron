@@ -181,7 +181,7 @@ function elysia_cron_cron() {
   }
   
   // First cron run is executed in standard drupal way. This is to enable the use of install profiles
-  if (variable_get('cron_last', 0) == 0) {
+  if (variable_get('cron_last', 0) <= variable_get('install_time', 0)) {
     return;
   }
   // If the path is 'admin/*', or if the user is not anonymous, this is a manual cron run (probably by admin/logs/status), but not if we are in the exit phase (= this a "poormanscron" run)
