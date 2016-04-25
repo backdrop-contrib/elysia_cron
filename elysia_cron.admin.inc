@@ -127,7 +127,7 @@ function elysia_cron_admin_page() {
       array('<img src="' . $ipath . 'running.png" width="16" height="16" align="top" alt="' . $tip . '" title="' . $tip . '" /> ' . t('Job is running right now')),
       array('<img src="' . $ipath . 'disabled.png" width="16" height="16" align="top" alt="' . $tip . '" title="' . $tip . '" /> ' . t('Job is disabled by settings, and won\'t run until enabled again')),
       array(t('Notes: job times don\'t include shutdown times (only shown on channel times).')),
-      array(t('If an abort occours usually the job is not properly terminated, and so job timings can be inaccurate or wrong.')),
+      array(t('If an abort occurs usually the job is not properly terminated, and so job timings can be inaccurate or wrong.')),
     ),
   ));
 
@@ -261,7 +261,7 @@ EOT
       '#default_value' => variable_get('cron_safe_threshold', DRUPAL_CRON_DEFAULT_THRESHOLD),
       '#description' => t('Setting a time here will enable the "poormanscron" method, which runs the Drupal cron operation using normal browser/page requests instead of having to set up a crontab to request the cron.php script. This approach requires that your site gets regular traffic/visitors in order to trigger the cron request.') . '<br />' .
         t('This way is fine if you don\'t need a great control over job starting times and execution frequency.') . '<br />' .
-        t('If you need a fine grained control over cron timings use the crontab metod, as <a href="!cron_url">described in Drupal installation guide</a>.', array('!cron_url' => url('http://drupal.org/cron'))) . '<br />' .
+        t('If you need fine-grained control over cron timings use the crontab method, as <a href="!cron_url">described in Drupal installation guide</a>.', array('!cron_url' => url('http://drupal.org/cron'))) . '<br />' .
         t('If you have a very large site, or you need to execute some jobs very often (more than once an hour) refer to Elysia cron\'s INSTALL.TXT to improve main cron setup.'),
       '#options' => array(0 => t('Never / Use external crontab')) + drupal_map_assoc(array(3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
     );
@@ -767,7 +767,7 @@ function elysia_cron_reset_statistics_form() {
   $form['fieldset'] = array(
     '#type' => 'fieldset',
     '#title' => t('Reset statistics'),
-    '#description' => t('Deletes all cron execution statistics (Last run, last exec time, exec count, avg/max exec time...). Do not touch cron settings.<br /><b>This operation could not be reverted</b><br />'),
+    '#description' => t('Deletes all cron execution statistics (Last run, last exec time, exec count, avg/max exec time...). Do not touch cron settings.<br /><b>This operation can not be reverted</b><br />'),
   );
   $form['fieldset']['reset'] = array(
     '#type' => 'submit',
