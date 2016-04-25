@@ -26,7 +26,7 @@ function elysia_cron_check_version_update() {
     );
 
     $rs = db_query("select * from {variable} where name like 'elysia_cron_%%'");
-    while ($v = db_fetch_object($rs)) {
+    foreach ($rs as $v) {
       if (!in_array($v->name, $unchanged)) {
         $vn = false;
         if (preg_match('/^elysia_cron_ctx_(.*)_(running|disabled|last_run|last_aborted|abort_count|execution_count|last_execution_time|avg_execution_time|max_execution_time|last_shutdown_time|last_abort_function)/', $v->name, $r)) {
@@ -181,7 +181,7 @@ function elysia_cron_check_version_update() {
     $rs = db_query("select * from {variable} where name like 'ec_%%' or name like 'ecc_%%'");
     $data = array();
     $todelete = array();
-    while ($v = db_fetch_object($rs)) {
+    foreach ($rs as $v) {
       $name = false;
       if (preg_match('/^ecc_(.+)_(r|d|lr|la|ac|ec|let|aet|met|lst|laf)/', $v->name, $r)) {
         $name = ':' . $r[1];
@@ -288,7 +288,7 @@ function elysia_cron_check_version_update() {
 
     variable_set('elysia_cron_version', 20110323);
   }
-  
+
   if ($ver < 20111007) {
     $default_rules = variable_get('elysia_cron_default_rules', $GLOBALS['elysia_cron_default_rules']);
     if (!empty($default_rules['*/6 * * * *']) && $default_rules['*/6 * * * *'] == 'Every 6 hours') {
