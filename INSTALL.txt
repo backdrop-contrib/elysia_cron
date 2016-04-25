@@ -41,8 +41,8 @@ The only difference is that you should use the "* * * * *" rule part instead of
 "0 * * * *" or "45 * * * *" as described in the guide.
 
 While you're editing the system crontab, it's also recommended to replace the
-"/cron.php" part with "/sites/modules/elysia_cron/cron.php" (if you have
-installed elysia_cron in "sites/modules" directory).
+"/cron.php" part with "/sites/all/modules/elysia_cron/cron.php" (if you have
+installed elysia_cron in "sites/all/modules" directory).
 This is an optional step (you can leave "/cron.php" if you want), doing it will 
 result in a better performance in bigger sites (elysia_cron's cron.php handles 
 cache in a better way).
