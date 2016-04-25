@@ -78,6 +78,10 @@ red; font-weight: bold; }
 PERMISSIONS
 ------------
 
-You can also give 'administer elysia_cron' permission to all user roles that
-needs to administer cron jobs. You can do this with standard drupal users
-administration.
+There are three permission provided by module:
+ * Administer elysia cron - Perform changes to cron jobs timings, disable cron
+ or single jobs and access cron execution statistics;
+ * Execute elysia cron jobs - Allow users to view statistics, execution status
+ and do manually execute cron jobs;
+ * View elysia cron stats - Allows users to view statistics and execution status
+ of cron jobs;

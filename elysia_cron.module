@@ -56,7 +56,8 @@ function elysia_cron_menu($_dcr_maycache = true) {
     'title' => _dcf_t('Cron Settings'),
     'description' => _dcf_t('View and manage cron table'),
     'page callback' => 'elysia_cron_admin_page',
-    'access arguments' => array('administer elysia_cron'),
+    'access callback' => 'elysia_cron_access',
+    'access arguments' => array('view elysia_cron'),
   );
   $items['admin/config/system/cron/status'] = array(
     'type' => MENU_DEFAULT_LOCAL_TASK,
@@ -68,6 +69,7 @@ function elysia_cron_menu($_dcr_maycache = true) {
     'title' => _dcf_t('Settings'),
     'page callback' => 'drupal_get_form',
     'page arguments' => array('elysia_cron_settings_form'),
+    'access callback' => 'elysia_cron_access',
     'access arguments' => array('administer elysia_cron'),
     'weight' => 2,
   );
@@ -75,13 +77,15 @@ function elysia_cron_menu($_dcr_maycache = true) {
     'type' => MENU_LOCAL_TASK,
     'title' => _dcf_t('Maintenance'),
     'page callback' => 'elysia_cron_maintenance_page',
+    'access callback' => 'elysia_cron_access',
     'access arguments' => array('administer elysia_cron'),
     'weight' => 3,
   );
   $items['admin/config/system/cron/execute'] = array(
     'type' => MENU_CALLBACK,
     'page callback' => 'elysia_cron_execute_page',
-    'access arguments' => array('administer elysia_cron'),
+    'access callback' => 'elysia_cron_access',
+    'access arguments' => array('execute elysia_cron'),
   );
   $items['admin/build/cron/ping'] = array(
     'type' => MENU_CALLBACK,
@@ -98,10 +102,40 @@ if (EC_DRUPAL_VERSION >= 7) {
       'title' => _dcf_t('Cron Settings'),
       'description' => 'View and manage cron table',
       'page callback' => 'elysia_cron_admin_page',
-      'access arguments' => array('administer elysia_cron'),
+      'access callback' => 'elysia_cron_access',
+      'access arguments' => array('view elysia_cron'),
       'file' => NULL,
     ) + $items['admin/config/system/cron'];
   }
+}
+
+/**
+ * Check access to operation inside elysia cron module.
+ *
+ * Permission have nested structure, for example: "administer elysia_cron" allow
+ * to do anything: view, execute and configure cron jobs.
+ *
+ * @param string $perm
+ *   Permission name.
+ *
+ * @return bool
+ *   Access granted or not.
+ */
+function elysia_cron_access($perm) {
+  switch ($perm) {
+    case 'administer elysia_cron':
+      $access = user_access($perm);
+      break;
+
+    case 'execute elysia_cron':
+      $access = user_access($perm) || user_access('administer elysia_cron');
+      break;
+
+    case 'view elysia_cron';
+      $access = user_access($perm) || user_access('execute elysia_cron') || user_access('administer elysia_cron');
+  }
+
+  return $access;
 }
 
 function elysia_cron_perm() { // For D5-D6
@@ -110,6 +144,8 @@ function elysia_cron_perm() { // For D5-D6
 function elysia_cron_permission() { // For D7
   return array(
     'administer elysia_cron' => array('title' => t('Administer elysia cron'), 'description' => t('Perform changes to cron jobs timings, disable cron or single jobs and access cron execution statistics')),
+    'execute elysia_cron' => array('title' => t('Execute elysia cron jobs'), 'description' => t('Allow users to view statistics, execution status and do manually execute cron jobs')),
+    'view elysia_cron' => array('title' => t('View elysia cron stats'), 'description' => t('Allows users to view statistics and execution status of cron jobs')),
   );
 }
 
@@ -1080,7 +1116,7 @@ function elysia_cron_run($manual_run = false, $ignore_disable = false, $ignore_t
       return;
     }
   }
-  elseif(!user_access('administer elysia_cron')) {
+  elseif(!user_access('execute elysia_cron')) {
     return;
   }
   

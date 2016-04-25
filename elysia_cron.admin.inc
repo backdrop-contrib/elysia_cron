@@ -10,7 +10,9 @@
 
 function elysia_cron_admin_page() {
   $aoutput = array();
-  $aoutput[] = drupal_get_form('elysia_cron_run_form');
+  if (elysia_cron_access('execute elysia_cron')) {
+    $aoutput[] = drupal_get_form('elysia_cron_run_form');
+  }
 
   $output = '';
 
@@ -92,10 +94,14 @@ function elysia_cron_admin_page() {
       }
       
       if ($job != '#data') {
+        $force_run = elysia_cron_access('execute elysia_cron')
+          ? _dco_l(t('Force run'), _dcf_internal_path('admin/config/system/cron/execute/') . $job, array('attributes' => array('onclick' => 'return confirm("' . t('Force execution of !job?', array('!job' => $job)) . '");')))
+          : '';
+
         $rows[] = array(
           array( 'data' => '<img src="' . $ipath . $icon . '.png" width="16" height="16" align="top" alt="' . $tip . '" title="' . $tip . '" />', 'align' => 'right' ),
           array( 'data' => $caption . ': <i>' . elysia_cron_description($job) . '</i> ', 'colspan' => 4 ),
-          array( 'data' => _dco_l(t('Force run'), _dcf_internal_path('admin/config/system/cron/execute/') . $job, array('attributes' => array('onclick' => 'return confirm("' . t('Force execution of !job?', array('!job' => $job)) . '");'))), 'align' => 'right'),
+          array( 'data' => $force_run, 'align' => 'right'),
         );
         $rows[] = array(
           '',
@@ -265,14 +271,14 @@ EOT
     '#title' => t('Cron key'),
     '#type' => 'textfield',
     '#default_value' => variable_get('cron_key', ''),
-    '#description' => t('This is used to avoid external cron calling. If you set this cron will by accessible only by calling http://site/cron.php?cron_key=XXX, so you\'ll need to modify system crontab to support this (Logged user with [administer elysia_cron] permission avoid this check).'),
+    '#description' => t('This is used to avoid external cron calling. If you set this cron will by accessible only by calling http://site/cron.php?cron_key=XXX, so you\'ll need to modify system crontab to support this (Logged user with [execute elysia_cron] permission avoid this check).'),
   );
 
   $form['installation']['elysia_cron_allowed_hosts'] = array(
     '#title' => t('Allowed hosts'),
     '#type' => 'textfield',
     '#default_value' => variable_get('elysia_cron_allowed_hosts', ''),
-    '#description' => t('Insert a list of ip addresses separated by , that can run cron.php (Logged user with [administer elysia_cron] permission avoid this check).'),
+    '#description' => t('Insert a list of ip addresses separated by , that can run cron.php (Logged user with [execute elysia_cron] permission avoid this check).'),
   );
 
   $form['installation']['elysia_cron_default_rule'] = array(
