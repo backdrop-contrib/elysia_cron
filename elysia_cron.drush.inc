@@ -75,15 +75,9 @@ function elysia_cron_drush_command() {
 function drush_elysia_cron_run_wrapper($op = false, $target = false) {
   global $elysia_cron_drush;
 
-  if (variable_get('maintenance_mode', 0)) {
-    drush_print('The site is in maintenance mode.');
-
-    $choice = drush_choice(array(
-      0 => dt('abort'),
-      1 => dt('continue'),
-    ), 'Would you like to continue or abort this cron run?');
-    if ($choice == 0) {
-      drush_set_error('Cron did not run.');
+  if (variable_get('maintenance_mode', FALSE)) {
+    if (!variable_get('elysia_cron_run_maintenance', FALSE)) {
+      drush_set_error('Cron run is not allowed in maintenance mode');
       return;
     }
   }

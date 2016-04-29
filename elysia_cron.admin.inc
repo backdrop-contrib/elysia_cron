@@ -246,6 +246,12 @@ EOT
     '#type' => 'checkbox',
     '#default_value' => variable_get('elysia_cron_disabled', false),
   );
+  $form['main']['elysia_cron_run_maintenance'] = array(
+    '#title' => t('Run in maintenance'),
+    '#description' => t('Allow to run cron in maintenance mode.'),
+    '#type' => 'checkbox',
+    '#default_value' => variable_get('elysia_cron_run_maintenance', FALSE),
+  );
 
   $form['installation'] = array(
     '#title' => t('Installation settings'),
