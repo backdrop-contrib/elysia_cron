@@ -1096,30 +1096,32 @@ function elysia_cron_after_execution() {
  * @param $ignore_time Run channel (and all it's jobs) job even if not ready
  * @param $ignore_running Run the channel (and all it's jobs) even if already running
  */
-function elysia_cron_run($manual_run = false, $ignore_disable = false, $ignore_time = false, $ignore_running = false) {
-  // If DISABLED block the execution
-  if (!$ignore_disable && variable_get('elysia_cron_disabled', false)) {
-    elysia_cron_debug("Cron globally disabled, skipping run");
+function elysia_cron_run($manual_run = FALSE, $ignore_disable = FALSE, $ignore_time = FALSE, $ignore_running = FALSE) {
+  // If DISABLED block the execution.
+  if (!$ignore_disable && variable_get('elysia_cron_disabled', FALSE)) {
+    elysia_cron_debug('Cron globally disabled, skipping run');
     return;
   }
 
-  // Check for CRON_KEY or ALLOWED_HOSTS
+  // Check for CRON_KEY or ALLOWED_HOSTS.
   if (!$manual_run) {
-    $cron_key = variable_get('cron_key', '');
-    if ($cron_key && (empty($_GET['cron_key']) || $_GET['cron_key'] != $cron_key)) {
-      elysia_cron_debug("Cron key mismatch, skipping run");
-      return;
-    }
-    $allowed_hosts = variable_get('elysia_cron_allowed_hosts', false);
-    if ($allowed_hosts && !in_array(ip_address(), explode(",", $allowed_hosts))) {
-      elysia_cron_debug("Cron ip address mismatch, skipping run");
-      return;
+    if (!drupal_is_cli()) {
+      $cron_key = variable_get('cron_key', '');
+      if ($cron_key && (empty($_GET['cron_key']) || $_GET['cron_key'] != $cron_key)) {
+        elysia_cron_debug('Cron key mismatch, skipping run');
+        return;
+      }
+      $allowed_hosts = variable_get('elysia_cron_allowed_hosts', FALSE);
+      if ($allowed_hosts && !in_array(ip_address(), explode(',', $allowed_hosts))) {
+        elysia_cron_debug('Cron ip address mismatch, skipping run');
+        return;
+      }
     }
   }
-  elseif(!user_access('execute elysia_cron')) {
+  elseif (!user_access('execute elysia_cron')) {
     return;
   }
-  
+
   elysia_cron_prepare_run($manual_run);
 
   _ec_variable_set('elysia_cron_last_run', time());
@@ -1140,7 +1142,7 @@ function elysia_cron_run($manual_run = false, $ignore_disable = false, $ignore_t
       elysia_cron_debug('No channels ready to be executed, skipping cron.');
     }
   }
-  
+
   elysia_cron_unprepare_run($manual_run);
 
   return $execute;
