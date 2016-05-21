@@ -1025,20 +1025,21 @@ function elysia_cron_unprepare_run($manual_run) {
 
 /**
  * Use this before checking and modifying environment variables.
- * 
+ *
  * @see: elysia_cron_prepare_run()
  */
-function elysia_cron_lock_env() {
-  $execute = true;
+function elysia_cron_lock_env($channel = NULL) {
+  $execute = TRUE;
+  $semaphore_name = elysia_cron_build_semaphore_name($channel);
   if (EC_DRUPAL_VERSION >= 7) {
-    if (!lock_acquire('cron', 240.0)) {
+    if (!lock_acquire($semaphore_name, 240)) {
       elysia_cron_warning('Attempting to re-run cron while it is already running.');
-      $execute = false;
+      $execute = FALSE;
     }
   }
   else {
     // Global Semaphore to avoid concurrent execution of cron preparation code
-    $execute = _ec_semaphore_get('elysia_cron_semaphore', 120);
+    $execute = _ec_semaphore_get($semaphore_name, 120);
   }
   return $execute;
 }
@@ -1048,14 +1049,32 @@ function elysia_cron_lock_env() {
  * 
  * @see: elysia_cron_prepare_run()
  */
-function elysia_cron_unlock_env() {
-  // Release cron lock.
+function elysia_cron_unlock_env($channel = NULL) {
+  $semaphore_name = elysia_cron_build_semaphore_name($channel);
   if (EC_DRUPAL_VERSION >= 7) {
-    lock_release('cron');
-
-  } else {
-    _ec_variable_del('elysia_cron_semaphore');
+    lock_release($semaphore_name);
   }
+  else {
+    _ec_variable_del($semaphore_name);
+  }
+}
+
+/**
+ * Return semaphore name by channel.
+ *
+ * @param string|NULL $channel
+ *   Channel name or NULL if channel not set.
+ *
+ * @return string
+ *   Semaphore name trimmed by 255 chars length.
+ */
+function elysia_cron_build_semaphore_name($channel) {
+  $semaphore_name = 'elysia_cron_semaphore';
+  if (isset($channel)) {
+    $semaphore_name .= ':' . $channel;
+  }
+
+  return drupal_substr($semaphore_name, 0, 255);
 }
 
 /**
@@ -1159,7 +1178,7 @@ function elysia_cron_run_channel($channel, $ignore_disable = false, $ignore_time
   global $elysia_cron_settings_by_channel;
   
   elysia_cron_prepare_run(true); // Always $manual_run
-  if ($execute = elysia_cron_lock_env()) {
+  if ($execute = elysia_cron_lock_env($channel)) {
     elysia_cron_initialize();
     $jobs = false;
     if (isset($elysia_cron_settings_by_channel[$channel])) {
