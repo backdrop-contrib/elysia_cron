@@ -276,8 +276,9 @@ EOT
   $form['installation']['cron_key'] = array(
     '#title' => t('Cron key'),
     '#type' => 'textfield',
-    '#default_value' => variable_get('cron_key', ''),
-    '#description' => t('This is used to avoid external cron calling. If you set this cron will by accessible only by calling http://site/cron.php?cron_key=XXX, so you\'ll need to modify system crontab to support this (Logged user with [execute elysia_cron] permission avoid this check).'),
+    '#default_value' => variable_get('cron_key'),
+    '#description' => t("This is used to avoid external cron calling. If you set this cron will by accessible only by calling <em>http://site/cron.php?cron_key=XXX</em>, so you'll need to modify system crontab to support this (Logged users with <em>execute elysia_cron</em> permission avoid this check).
+    <br>If you left this field empty, you can run cron without cron_key parameter, like this <em>http://site/cron.php</em>, but it <b>HIGHLY NOT RECOMMENDED</b>."),
   );
 
   $form['installation']['elysia_cron_allowed_hosts'] = array(

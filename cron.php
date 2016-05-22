@@ -26,7 +26,7 @@ drupal_override_server_variables(array(
 ));
 drupal_bootstrap(DRUPAL_BOOTSTRAP_FULL);
 
-if (!isset($_GET['cron_key']) || variable_get('cron_key', 'drupal') != $_GET['cron_key']) {
+if ((variable_get('cron_key') && empty($_GET['cron_key'])) || !empty($_GET['cron_key']) && variable_get('cron_key') != $_GET['cron_key']) {
   watchdog('cron', 'Cron could not run because an invalid key was used.', array(), WATCHDOG_NOTICE);
   drupal_access_denied();
 }
