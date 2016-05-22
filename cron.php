@@ -30,7 +30,7 @@ if (!isset($_GET['cron_key']) || variable_get('cron_key', 'drupal') != $_GET['cr
   watchdog('cron', 'Cron could not run because an invalid key was used.', array(), WATCHDOG_NOTICE);
   drupal_access_denied();
 }
-elseif (variable_get('maintenance_mode', 0)) {
+elseif (variable_get('maintenance_mode', 0) && !variable_get('elysia_cron_run_maintenance', FALSE)) {
   watchdog('cron', 'Cron could not run because the site is in maintenance mode.', array(), WATCHDOG_NOTICE);
   drupal_access_denied();
 }
