@@ -467,7 +467,11 @@ function elysia_cron_get($name, $channel = false, $key = false, $default = false
   
   if ($refresh || !isset($elysia_cron_db_cache[$name])) {
     if (EC_DRUPAL_VERSION >= 7) {
-      $elysia_cron_db_cache[$name] = db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron} where name = :name", array(':name' => $name))->fetchAssoc();
+      $elysia_cron_db_cache[$name] = db_select('elysia_cron', 'ec')
+        ->fields('ec', $GLOBALS['_ec_columns'])
+        ->condition('name', $name)
+        ->execute()
+        ->fetchAssoc();
     }
     else {
       $elysia_cron_db_cache[$name] = db_fetch_array(db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron} where name = '%s'", $name));

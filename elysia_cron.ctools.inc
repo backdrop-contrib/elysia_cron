@@ -27,7 +27,11 @@ function elysia_cron_ctools_export_load($name) {
     $export = $schema['export'];
     
     if (EC_DRUPAL_VERSION >= 7) {
-      $object = db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron} where name = :name", array(':name' => $name))->fetch();
+      $object = db_select('elysia_cron', 'ec')
+        ->fields('ec', $GLOBALS['_ec_columns'])
+        ->condition('name', $name)
+        ->execute()
+        ->fetch();
     }
     else {
       $object = db_fetch_object(db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron} where name = '%s'", $name));
@@ -60,7 +64,10 @@ function elysia_cron_ctools_export_load_all() {
   $export = $schema['export'];
     
   if (EC_DRUPAL_VERSION >= 7) {
-    $objects = db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron}")->fetchAll();
+    $objects = db_select('elysia_cron', 'ec')
+      ->fields('ec', $GLOBALS['_ec_columns'])
+      ->execute()
+      ->fetchAll();
   }
   else {
     $objects = array();
