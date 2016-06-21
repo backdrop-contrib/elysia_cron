@@ -24,7 +24,7 @@ function elysia_cron_schema() {
       'rule' => array(
         'type' => 'varchar',
         'not null' => FALSE,
-        'length' => 32,
+        'length' => 256,
       ),
       'weight' => array(
         'type' => 'int',
@@ -183,4 +183,17 @@ function elysia_cron_update_2() {
     'length' => 128,
     'no export' => TRUE,
   ));
+}
+
+/**
+ * Implements hook_update_N().
+ * Change length property of rule to 256 characters.
+ */
+function elysia_cron_update_3() {
+  $spec = array(
+    'type' => 'varchar',
+    'not null' => FALSE,
+    'length' => 256,
+  );
+  db_change_field('elysia_cron', 'rule', 'rule', $spec);
 }
