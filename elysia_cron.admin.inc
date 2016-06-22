@@ -611,7 +611,7 @@ function elysia_cron_settings_form_validate($_dco_form, &$_dco_form_state) {
   }
 
   foreach ($form_state['values'] as $key => $value) {
-    if ($value && preg_match('/^_elysia_cron_([^_]+_[^_]+)_(.*)$/', $key, $r) && ($r[1] == 'job_rule' || $r[1] == 'ch_rule')) {
+    if ($value && ((preg_match('/^_elysia_cron_([^_]+_[^_]+)_(.*)$/', $key, $r) && ($r[1] == 'job_rule' || $r[1] == 'ch_rule')) || $key == 'elysia_cron_default_rule')) {
       if (!preg_match('/^\\s*([0-9*,\/-]+[ ]+[0-9*,\/-]+[ ]+[0-9*,\/-]+[ ]+[0-9*,\/-]+[ ]+[0-9*,\/-]+)\\s*$/', $value)) {
         form_set_error($key, t('Invalid rule: !rule', array('!rule' => $value)));
       }
