@@ -993,7 +993,7 @@ function elysia_cron_prepare_run($manual_run, $start = true) {
     @ignore_user_abort(true);
 
     // Try to allocate enough time to run all the hook_cron implementations.
-    if (!ini_get('safe_mode')) {
+    if (!ini_get('safe_mode') && _elysia_cron_function_available('set_time_limit')) {
       set_time_limit(variable_get('elysia_cron_time_limit', 240));
     }
 
@@ -1761,4 +1761,21 @@ function elysia_cron_admin_menu(&$deleted) {
   }
 
   return $links;
+}
+
+/**
+ * Check if function available to use.
+ *
+ * Some native php function can be disabled by configuration,
+ * to avoid a lot of notices we check availability of such functions.
+ *
+ * @param string $func
+ *   Function to check.
+ *
+ * @return bool
+ *   TRUE if function available for use, FALSE otherwise.
+ */
+function _elysia_cron_function_available($func) {
+  $disabled = explode(',', ini_get('disable_functions'));
+  return !in_array($func, $disabled);
 }
