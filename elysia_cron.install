@@ -105,9 +105,7 @@ function elysia_cron_schema() {
       'object factory' => 'elysia_cron_ctools_export_object_factory',
       'load callback' => 'elysia_cron_ctools_export_load',
       'load all callback' => 'elysia_cron_ctools_export_load_all',
-      //'save callback' => 'elysia_cron_ctools_export_save',
       'export callback' => 'elysia_cron_ctools_export_callback',
-      //'import callback' => 'elysia_cron_ctools_import_callback',
       'to hook code callback' => 'elysia_cron_ctools_to_hook_code',
 
       'default hook' => 'default_elysia_cron_rules',
@@ -130,7 +128,6 @@ function elysia_cron_install() {
   // Elysia cron MUST be the first returned by module_list.
   // This is to ensure elysia_cron_cron is the first hook
   // called by standard cron.php.
-
   $query = db_select('system');
   $query->addExpression('MIN(weight)');
   $min = $query->execute()->fetchField();
@@ -161,10 +158,9 @@ function elysia_cron_uninstall() {
 }
 
 /**
- * Implements hook_update_N().
  * Use default cron_key variable.
  */
-function elysia_cron_update_1() {
+function elysia_cron_update_7201() {
   $cron_key = variable_get('elysia_cron_key', FALSE);
   if ($cron_key) {
     variable_set('cron_key', $cron_key);
@@ -174,10 +170,9 @@ function elysia_cron_update_1() {
 }
 
 /**
- * Implements hook_update_N().
- * Increase elysia_cron last_abort_function size from 32 to 128 characters
+ * Increase elysia_cron last_abort_function size from 32 to 128 characters.
  */
-function elysia_cron_update_2() {
+function elysia_cron_update_7202() {
   db_change_field('elysia_cron', 'last_abort_function', 'last_abort_function', array(
     'type' => 'varchar',
     'length' => 128,
@@ -186,10 +181,9 @@ function elysia_cron_update_2() {
 }
 
 /**
- * Implements hook_update_N().
  * Change length property of rule to 256 characters.
  */
-function elysia_cron_update_3() {
+function elysia_cron_update_7203() {
   $spec = array(
     'type' => 'varchar',
     'not null' => FALSE,
