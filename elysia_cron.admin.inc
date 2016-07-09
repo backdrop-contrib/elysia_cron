@@ -722,9 +722,17 @@ function elysia_cron_settings_form_submit($_dco_form, &$_dco_form_state) {
   }
 }
 
+/**
+ * Build time in "ago" format.
+ *
+ * @param int $timestamp
+ *   Time of latest cron.
+ *
+ * @return string
+ *   Date in 'ago' format.
+ */
 function elysia_cron_date($timestamp) {
-  return $timestamp > 0 ? format_date($timestamp, EC_DRUPAL_VERSION >= 7 ? 'short' : 'small') : t('n/a');
-  //return date(variable_get('date_format_short', 'm/d/Y - H:i'), $timestamp);
+  return $timestamp > 0 ? t('!time ago', array('!time' => format_interval(REQUEST_TIME - $timestamp, 2))) : t('n/a');
 }
 
 function elysia_cron_run_form() {
