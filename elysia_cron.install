@@ -138,8 +138,6 @@ function elysia_cron_install() {
     ->fields(array('weight' => $min))
     ->condition('name', 'elysia_cron')
     ->execute();
-
-  variable_set('elysia_cron_version', elysia_cron_version());
 }
 
 /**
@@ -190,4 +188,11 @@ function elysia_cron_update_7203() {
     'length' => 256,
   );
   db_change_field('elysia_cron', 'rule', 'rule', $spec);
+}
+
+/**
+ * Remove unused variables.
+ */
+function elysia_cron_update_7204() {
+  variable_del('elysia_cron_version');
 }

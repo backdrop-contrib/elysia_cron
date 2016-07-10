@@ -20,7 +20,6 @@
  *   shutdown hook).
  */
 
-require_once('elysia_cron_update.php');
 require_once('elysia_cron_scheduler.inc');
 require_once('elysia_cron.admin.inc');
 require_once('elysia_cron.ctools.inc');
@@ -34,10 +33,6 @@ $GLOBALS['elysia_cron_default_rules'] = array(
   '4 0 * * 0' => 'Once a week',
   '4 0 1 * *' => 'Once a month',
 );
-
-function elysia_cron_version() {
-  return 20111020;
-}
 
 /*******************************************************************************
  * DRUPAL HOOKS
@@ -227,7 +222,6 @@ function elysia_cron_help($section, $arg = false) {
 
 // Variables managed by _ec_variable method, because are setted during cron execution handling (with standard variable_set this will invalidate variable cache in EVERY cron clock)
 $GLOBALS['_ec_variables_allowed'] = array(
-  'elysia_cron_version', // Just for compatibility purpose during elysia_cron_update phase
   'elysia_cron_semaphore', 
   'elysia_cron_last_run',
   'elysia_cron_last_context', 
@@ -790,7 +784,6 @@ function elysia_cron_initialize($skipscript = false) {
   global $elysia_cron_settings, $elysia_cron_settings_by_channel;
   
   if (empty($elysia_cron_settings)) {
-    elysia_cron_check_version_update();
 
     $elysia_cron_settings = array();
     $elysia_cron_settings_by_channel = array();
