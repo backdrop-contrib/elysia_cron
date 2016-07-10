@@ -196,3 +196,14 @@ function elysia_cron_update_7203() {
 function elysia_cron_update_7204() {
   variable_del('elysia_cron_version');
 }
+
+/**
+ * Rename context variable to channel.
+ */
+function elysia_cron_update_7205() {
+  if ($last = variable_get('elysia_cron_last_context')) {
+    variable_set('elysia_cron_last_channel', $last);
+  }
+
+  variable_del('elysia_cron_last_context');
+}

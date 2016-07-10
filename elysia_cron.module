@@ -63,14 +63,16 @@ function elysia_cron_menu() {
   $items['admin/config/system/cron/maintenance'] = array(
     'type' => MENU_LOCAL_TASK,
     'title' => 'Maintenance',
-    'page callback' => 'elysia_cron_maintenance_page',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('elysia_cron_reset_statistics_form'),
     'access callback' => 'elysia_cron_access',
     'access arguments' => array('administer elysia_cron'),
     'weight' => 3,
   );
-  $items['admin/config/system/cron/execute'] = array(
+  $items['admin/config/system/cron/execute/%'] = array(
     'type' => MENU_CALLBACK,
     'page callback' => 'elysia_cron_execute_page',
+    'page arguments' => array(5),
     'access callback' => 'elysia_cron_access',
     'access arguments' => array('execute elysia_cron'),
   );
@@ -224,7 +226,7 @@ function elysia_cron_help($section, $arg = false) {
 $GLOBALS['_ec_variables_allowed'] = array(
   'elysia_cron_semaphore', 
   'elysia_cron_last_run',
-  'elysia_cron_last_context', 
+  'elysia_cron_last_channel',
   'cron_semaphore', 
   'cron_last',
 );
@@ -241,7 +243,7 @@ function _ec_variable_init() {
 
 /**
  * A substitute for variable_get to avoid cache management
- * Use ONLY for variables setted during cron execution: elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_context, cron_semaphore, cron_last
+ * Use ONLY for variables setted during cron execution: elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_channel, cron_semaphore, cron_last
  * WARN_UPGRADE
  */
 function _ec_variable_get($name, $default) {
@@ -270,7 +272,7 @@ function _ec_variable_get($name, $default) {
 
 /**
  * A substitute for variable_set to avoid cache management
- * Use ONLY for variables setted during cron execution: elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_context, cron_semaphore, cron_last
+ * Use ONLY for variables setted during cron execution: elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_channel, cron_semaphore, cron_last
  * WARN_UPGRADE
  */
 function _ec_variable_set($name, $value) {
@@ -291,7 +293,7 @@ function _ec_variable_set($name, $value) {
 
 /**
  * A substitute for variable_del to avoid cache management
- * Use ONLY for variables setted during cron execution: elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_context, cron_semaphore, cron_last
+ * Use ONLY for variables setted during cron execution: elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_channel, cron_semaphore, cron_last
  * WARN_UPGRADE
  */
 function _ec_variable_del($name) {
@@ -598,11 +600,11 @@ function elysia_cron_set_job_stats($job, $last_run = -1, $last_execution_time = 
 }
 
 function elysia_cron_last_channel() {
-  return _ec_variable_get('elysia_cron_last_context', '');
+  return _ec_variable_get('elysia_cron_last_channel', '');
 }
 
 function elysia_cron_set_last_channel($channel) {
-  _ec_variable_set('elysia_cron_last_context', $channel);
+  _ec_variable_set('elysia_cron_last_channel', $channel);
 }
 
 function elysia_cron_reset_stats() {
@@ -1374,6 +1376,7 @@ function elysia_cron_description($job) {
   else {
     $desc = theme('elysia_cron_description', array('job' => $job));
   }
+
   return t($desc);
 }
 
