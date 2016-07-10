@@ -115,68 +115,8 @@ function elysia_cron_check_version_update() {
 
   }
   if ($ver < 20100507) {
-    if (EC_DRUPAL_VERSION >= 6) {
-      // D6
-      drupal_install_schema('elysia_cron');
-
-      // In ver 20111020 disabled has been renamed to disable, revert it now
-      if (EC_DRUPAL_VERSION >= 7) {
-        // D7
-        // Must use "$v" for PHP5.3 running D6 version (detect the error even if it doesn't pass here)
-        db_change_field($v = 'elysia_cron', 'disable', 'disabled', array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE));
-
-      }
-      elseif (EC_DRUPAL_VERSION >= 6) {
-        // D6
-        $ret = array();
-        db_change_field($ret, 'elysia_cron', 'disable', 'disabled', array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE));
-      }
-    }
-    else {
-      // D5
-      switch ($GLOBALS['db_type']) {
-        case 'mysqli':
-        case 'mysql':
-          db_query("create table if not exists {elysia_cron} (
-            name varchar(120) not null,
-            disabled tinyint(1) not null default '0',
-            rule varchar(32),
-            weight int(11) not null default '0',
-            context varchar(32),
-            running int(11) not null default '0',
-            last_run int(11) not null default '0',
-            last_aborted tinyint(1) not null default '0',
-            abort_count int(11) not null default '0',
-            last_abort_function varchar(32),
-            last_execution_time int(11) not null default '0',
-            execution_count int(11) not null default '0',
-            avg_execution_time float(5,2) not null default '0',
-            max_execution_time int(11) not null default '0',
-            last_shutdown_time int(11) not null default '0',
-            primary key (name)
-          )");
-          break;
-        case 'pgsql':
-          db_query("create table {elysia_cron} (
-            name varchar(120) not null,
-            disabled smallint not null default '0',
-            rule varchar(32),
-            weight integer not null default '0',
-            context varchar(32),
-            running int not null default '0',
-            last_run integer not null default '0',
-            last_aborted smallint not null default '0',
-            abort_count integer not null default '0',
-            last_abort_function varchar(32),
-            last_execution_time integer not null default '0',
-            execution_count integer not null default '0',
-            avg_execution_time float not null default '0',
-            max_execution_time integer not null default '0',
-            last_shutdown_time integer not null default '0',
-            primary key (name)
-          )");
-      }
-    }
+    drupal_install_schema('elysia_cron');
+    db_change_field('elysia_cron', 'disable', 'disabled', array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE));
 
     $rs = db_query("select * from {variable} where name like 'ec_%%' or name like 'ecc_%%'");
     $data = array();
@@ -270,22 +210,7 @@ function elysia_cron_check_version_update() {
   // D7 VERSION FROM NOW ON...
 
   if ($ver < 20110323) {
-    if (EC_DRUPAL_VERSION >= 7) {
-      // D7
-      // Must use "$v" for PHP5.3 running D6 version (detect the error even if it doesn't pass here)
-      db_change_field($v = 'elysia_cron', 'weight', 'weight', array('type' => 'int', 'not null' => FALSE));
-
-    }
-    elseif (EC_DRUPAL_VERSION >= 6) {
-      // D6
-      $ret = array();
-      db_change_field($ret, 'elysia_cron', 'weight', 'weight', array('type' => 'int', 'not null' => FALSE));
-    }
-    else {
-      // D5
-      db_query("alter table {elysia_cron} change weight weight int(11)");
-    }
-
+    db_change_field($v = 'elysia_cron', 'weight', 'weight', array('type' => 'int', 'not null' => FALSE));
     variable_set('elysia_cron_version', 20110323);
   }
 
@@ -305,21 +230,7 @@ function elysia_cron_check_version_update() {
   }
 
   if ($ver < 20111020) {
-    if (EC_DRUPAL_VERSION >= 7) {
-      // D7
-      // Must use "$v" for PHP5.3 running D6 version (detect the error even if it doesn't pass here)
-      db_change_field($v = 'elysia_cron', 'disabled', 'disable', array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE));
-
-    }
-    elseif (EC_DRUPAL_VERSION >= 6) {
-      // D6
-      $ret = array();
-      db_change_field($ret, 'elysia_cron', 'disabled', 'disable', array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE));
-    }
-    else {
-      // D5
-      db_query("alter table {elysia_cron} change disabled disable tinyint(1)");
-    }
+    db_change_field('elysia_cron', 'disabled', 'disable', array('type' => 'int', 'size' => 'tiny', 'not null' => FALSE));
     db_query("update {elysia_cron} set disable = NULL where disable = 0");
 
     variable_set('elysia_cron_version', 20111020);

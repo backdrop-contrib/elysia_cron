@@ -24,12 +24,6 @@ function elysia_cron_admin_page() {
   $output .= '<p>' . t('Global disable') . ': <i>' . ($v ? '<span class="warn">' . t('YES') . '</span>' : 'no') . '</i></p>';
   $output .= '<p>' . t('Last channel executed') . ': <i>' . (($c = elysia_cron_last_channel()) ? $c : t('n/a')) . '</i></p>';
 
-  if (EC_DRUPAL_VERSION < 7) {
-    if (_ec_variable_get('elysia_cron_semaphore', 0)) {
-      $output .= '<p><span class="warn">' . t('Global semaphore active since !date', array('!date' => elysia_cron_date(_ec_variable_get('elysia_cron_semaphore', 0)))) . '</span></p>';
-    }
-  }
-
   $running = '';
   foreach ($elysia_cron_settings_by_channel as $channel => $data) {
     if (elysia_cron_is_channel_running($channel)) {
@@ -95,7 +89,7 @@ function elysia_cron_admin_page() {
       
       if ($job != '#data') {
         $force_run = elysia_cron_access('execute elysia_cron')
-          ? _dco_l(t('Force run'), _dcf_internal_path('admin/config/system/cron/execute/') . $job, array('attributes' => array('onclick' => 'return confirm("' . t('Force execution of !job?', array('!job' => $job)) . '");')))
+          ? l(t('Force run'), 'admin/config/system/cron/execute/' . $job, array('attributes' => array('onclick' => 'return confirm("' . t('Force execution of !job?', array('!job' => $job)) . '");')))
           : '';
 
         $rows[] = array(
@@ -116,10 +110,10 @@ function elysia_cron_admin_page() {
     $rows[] = array('&nbsp;','','','','','');
   }
   
-  $output .= _dco_theme('table', array('header' => array('', t('Job / Rule'), t('Last run'), t('Last exec time'), t('Exec count'), t('Avg/Max Exec time')), 'rows' => $rows));
+  $output .= theme('table', array('header' => array('', t('Job / Rule'), t('Last run'), t('Last exec time'), t('Exec count'), t('Avg/Max Exec time')), 'rows' => $rows));
   $output .= '<br />';
   
-  $output .= _dco_theme('table', array(
+  $output .= theme('table', array(
     'header' => array(t('Legend')),
     'rows' => array(
       array('<img src="' . $ipath . 'idle.png" width="16" height="16" align="top" alt="' . $tip . '" title="' . $tip . '" /> ' . t('Job shouldn\'t do anything right now')),
@@ -136,7 +130,7 @@ function elysia_cron_admin_page() {
     '#markup' => $output,
   );
 
-  return _dcr_render_array($aoutput);
+  return $aoutput;
 }
 
 function elysia_cron_settings_form() {
@@ -260,18 +254,16 @@ EOT
     '#collapsed' => true,
   );
 
-  if (EC_DRUPAL_VERSION >= 7) {
-    $form['installation']['cron_safe_threshold'] = array(
-      '#type' => 'select',
-      '#title' => t('Run cron on visitor\'s requests, every'),
-      '#default_value' => variable_get('cron_safe_threshold', DRUPAL_CRON_DEFAULT_THRESHOLD),
-      '#description' => t('Setting a time here will enable the "poormanscron" method, which runs the Drupal cron operation using normal browser/page requests instead of having to set up a crontab to request the cron.php script. This approach requires that your site gets regular traffic/visitors in order to trigger the cron request.') . '<br />' .
-        t('This way is fine if you don\'t need a great control over job starting times and execution frequency.') . '<br />' .
-        t('If you need fine-grained control over cron timings use the crontab method, as <a href="!cron_url">described in Drupal installation guide</a>.', array('!cron_url' => url('http://drupal.org/cron'))) . '<br />' .
-        t('If you have a very large site, or you need to execute some jobs very often (more than once an hour) refer to Elysia cron\'s INSTALL.TXT to improve main cron setup.'),
-      '#options' => array(0 => t('Never / Use external crontab')) + drupal_map_assoc(array(3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
-    );
-  }
+  $form['installation']['cron_safe_threshold'] = array(
+    '#type' => 'select',
+    '#title' => t('Run cron on visitor\'s requests, every'),
+    '#default_value' => variable_get('cron_safe_threshold', DRUPAL_CRON_DEFAULT_THRESHOLD),
+    '#description' => t('Setting a time here will enable the "poormanscron" method, which runs the Drupal cron operation using normal browser/page requests instead of having to set up a crontab to request the cron.php script. This approach requires that your site gets regular traffic/visitors in order to trigger the cron request.') . '<br />' .
+      t('This way is fine if you don\'t need a great control over job starting times and execution frequency.') . '<br />' .
+      t('If you need fine-grained control over cron timings use the crontab method, as <a href="!cron_url">described in Drupal installation guide</a>.', array('!cron_url' => url('http://drupal.org/cron'))) . '<br />' .
+      t('If you have a very large site, or you need to execute some jobs very often (more than once an hour) refer to Elysia cron\'s INSTALL.TXT to improve main cron setup.'),
+    '#options' => array(0 => t('Never / Use external crontab')) + drupal_map_assoc(array(3600, 10800, 21600, 43200, 86400, 604800), 'format_interval'),
+  );
 
   $form['installation']['cron_key'] = array(
     '#title' => t('Cron key'),
@@ -491,11 +483,10 @@ EOT
     elysia_cron_error('The settings have not been saved because of the errors.');
   }
 
-  return _dcr_form($form);
+  return $form;
 }
 
-function theme_elysia_cron_settings_form($_dco_variables) {
-  extract(_dcf_theme_form($_dco_variables));
+function theme_elysia_cron_settings_form($variables) {
   $form = &$variables['form'];
 
   $output = '<script type="text/javascript"><!--' . "\n" .
@@ -598,8 +589,7 @@ function theme_elysia_cron_settings_form($_dco_variables) {
   //return drupal_render(_dcr_form($form));
 }
 
-function elysia_cron_settings_form_validate($_dco_form, &$_dco_form_state) {
-  extract(_dcf_form_validate($_dco_form, $_dco_form_state));
+function elysia_cron_settings_form_validate($form, &$form_state) {
   global $elysia_cron_settings;
 
   $script = $form_state['values']['elysia_cron_script'];
@@ -619,8 +609,7 @@ function elysia_cron_settings_form_validate($_dco_form, &$_dco_form_state) {
   }
 }
 
-function elysia_cron_settings_form_submit($_dco_form, &$_dco_form_state) {
-  extract(_dcf_form_validate($_dco_form, $_dco_form_state));
+function elysia_cron_settings_form_submit($form, &$form_state) {
   $form_values = $form_state['values'];
 
   $op = isset($form_values['op']) ? $form_values['op'] : '';
@@ -756,25 +745,25 @@ function elysia_cron_run_form_submit($_dco_form, &$_dco_form_state) {
     elysia_cron_error('Cron run failed.');
   }
 
-  drupal_goto(_dcf_internal_path('admin/config/system/cron'));
+  drupal_goto('admin/config/system/cron');
 }
 
 function elysia_cron_execute_page($job = false) {
   if (!$job) {
     elysia_cron_error('No job specified');
-    drupal_goto(_dcf_internal_path('admin/config/system/cron'));
+    drupal_goto('admin/config/system/cron');
   }
   
   elysia_cron_run_job($job, true, true, false); // Run also if disabled or not ready (but not if it's already running)
 
-  drupal_goto(_dcf_internal_path('admin/config/system/cron'));
+  drupal_goto('admin/config/system/cron');
 }
 
 function elysia_cron_maintenance_page() {
   $output = array();
   $output[] = drupal_get_form('elysia_cron_reset_statistics_form');
   
-  return _dcr_render_array($output);
+  return $output;
 }
 
 function elysia_cron_reset_statistics_form() {
@@ -798,7 +787,7 @@ function elysia_cron_reset_statistics_form_submit($_dco_form, &$_dco_form_state)
   elysia_cron_reset_stats();
   
   elysia_cron_message('Reset done.');
-  drupal_goto(_dcf_internal_path('admin/config/system/cron/maintenance'));
+  drupal_goto('admin/config/system/cron/maintenance');
 }
 
 function elysia_cron_reset_page() {

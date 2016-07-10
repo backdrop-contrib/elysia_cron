@@ -25,19 +25,14 @@ function elysia_cron_ctools_export_load($name) {
   $schema = ctools_export_get_schema('elysia_cron');
   if (!empty($schema)) {
     $export = $schema['export'];
-    
-    if (EC_DRUPAL_VERSION >= 7) {
-      $object = db_select('elysia_cron', 'ec')
-        ->fields('ec', $GLOBALS['_ec_columns'])
-        ->condition('name', $name)
-        ->execute()
-        ->fetch();
-    }
-    else {
-      $object = db_fetch_object(db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron} where name = '%s'", $name));
-    }
+
+    $object = db_select('elysia_cron', 'ec')
+      ->fields('ec', $GLOBALS['_ec_columns'])
+      ->condition('name', $name)
+      ->execute()
+      ->fetch();
     $default_objects = _ctools_export_get_defaults('elysia_cron', $export);
-    
+
     if ($object) {
       if (isset($default_objects[$name])) {
         return _elysia_cron_ctools_export_load_object_db_and_code($object, $default_objects[$name], $export);
@@ -62,31 +57,23 @@ function elysia_cron_ctools_export_load_all() {
     return array();
   }
   $export = $schema['export'];
-    
-  if (EC_DRUPAL_VERSION >= 7) {
-    $objects = db_select('elysia_cron', 'ec')
-      ->fields('ec', $GLOBALS['_ec_columns'])
-      ->execute()
-      ->fetchAll();
-  }
-  else {
-    $objects = array();
-    $rs = db_query("select " . implode(", ", $GLOBALS['_ec_columns']) . " from {elysia_cron}");
-    while ($o = db_fetch_object($rs)) {
-      $objects[] = $o;
-    }
-  }
+
+  $objects = db_select('elysia_cron', 'ec')
+    ->fields('ec', $GLOBALS['_ec_columns'])
+    ->execute()
+    ->fetchAll();
   $default_objects = _ctools_export_get_defaults('elysia_cron', $export);
-  
+
   $result = array();
   foreach ($objects as $object) {
     $key = $object->{$export['key']};
     if (isset($default_objects[$key])) {
       $result[$key] = _elysia_cron_ctools_export_load_object_db_and_code($object, $default_objects[$key], $export);
       unset($default_objects[$key]);
-    } else {
+    }
+    else {
       $result[$key] = _elysia_cron_ctools_export_load_object_db($object, $export);
-    } 
+    }
   }
   foreach ($default_objects as $key => $object) {
     $result[$key] = _elysia_cron_ctools_export_load_object_code($object, $export);
