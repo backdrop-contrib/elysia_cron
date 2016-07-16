@@ -12,10 +12,11 @@
 
 /**
  * You can extend cron functionality in you modules by using elysia_cron api.
+ *
  * With it you can:
  * - have more than one cron job per module
  * - have a different schedule rule for each cron job defined
- * - set a description for each cron job
+ * - set a description for each cron job.
  *
  * To do this you should add in you module a new hook. This is the syntax:
  *
@@ -23,31 +24,36 @@
  *  You can define a timing for the standard cron hook of the module by using
  *  the "MODULENAME_cron" key. (See examples).
  *
- * - description: a textual description of the job, used in elysia cron's status
+ * - description:
+ *  a textual description of the job, used in elysia cron's status
  *  page. Use the untranslated string, without the "t()" wrapper (elysia_cron
  *  will apply it)
  *
- * - rule: the crontab rule. For example: "0 * * * *" to execute the task every
- *  hour.
+ * - rule:
+ *  the crontab rule. For example: "0 * * * *" to execute the task every hour.
  *
- * - weight (optional): a numerical value to define order of execution. (Default:0)
+ * - weight (optional):
+ *  a numerical value to define order of execution. (Default:0)
  *
- * - callback (optional): you can define here a name of a PHP function that should
+ * - callback (optional):
+ *  you can define here a name of a PHP function that should
  *  by called to execute the task. This is not mandatory: if you don't specify
  *  it Elysia cron will search for a function called like the task KEY.
  *  If this function is not found, Elysia cron will call the "hook_cronapi"
  *  function with $op = 'execute' and $job = 'KEY' (the key of the task).
  * (See examples)
  *
- * - arguments (optional): an array of arguments passed to callback (only if
- *  callback is defined)
+ * - arguments (optional):
+ *  an array of arguments passed to callback (only if callback is defined).
  *
- * - file/file path: the PHP file that contains the callback (hook_menu's syntax)
+ * - file/file path:
+ *  the PHP file that contains the callback (hook_menu's syntax).
  *
  * @param string $op
  *   Operation: "list" or "execute".
  * @param string|null $job
  *   Name of current job or it is NULL if we define job list.
+ *
  * @return array
  *   Job list.
  */
@@ -59,9 +65,9 @@ function hook_cronapi($op, $job = NULL) {
     'weight' => 1234,
     'callback' => 'function_name',
     'arguments' => array('first', 'second', 3),
-    // External file, like hook_menu.
+    // External file, like in hook_menu.
     'file' => 'string',
-    'file path' => 'string'
+    'file path' => 'string',
   );
 
   // Run function example_sendmail_cron() every 2 hours.

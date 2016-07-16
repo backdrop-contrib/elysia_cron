@@ -369,7 +369,7 @@ EOT
   );
 
   $default_rules_human = '';
-  $default_rules = variable_get('elysia_cron_default_rules', $GLOBALS['elysia_cron_default_rules']);
+  $default_rules = variable_get('elysia_cron_default_rules', _elysia_cron_default_rules());
   foreach ($default_rules as $dk => $dr) {
     $default_rules_human .= $dr . ' = ' . $dk . PHP_EOL;
   }
@@ -670,7 +670,7 @@ function elysia_cron_settings_form_submit(array $form, array &$form_state) {
   unset($form_values['submit'], $form_values['reset'], $form_values['form_id'], $form_values['op'], $form_values['form_token']);
 
   $elysia_cron_default_rules = array();
-  $rules = explode("\n", $form_values['elysia_cron_default_rules']);
+  $rules = explode(PHP_EOL, $form_values['elysia_cron_default_rules']);
   foreach ($rules as $r) {
     if (trim($r)) {
       $rr = explode("=", $r);

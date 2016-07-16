@@ -1,14 +1,15 @@
 <?php
 
-/*******************************************************************************
- * DRUSH SUPPORT
- ******************************************************************************/
+/**
+ * @file
+ * Drush integration for Elysia cron module.
+ */
 
 /**
  * Detect, is it drush or not.
  *
  * @return bool
- *  TRUE if code executed inside drush, FALSE otherwise.
+ *   TRUE if code executed inside drush, FALSE otherwise.
  */
 function elysia_cron_drush_detect() {
   return (!isset($_SERVER['SERVER_SOFTWARE']) && (php_sapi_name() == 'cli' || (is_numeric($_SERVER['argc']) && $_SERVER['argc'] > 0))) && function_exists('drush_main');
@@ -18,16 +19,8 @@ function elysia_cron_drush_detect() {
  * Exit from drush execution.
  */
 function elysia_cron_drush_die() {
-  if (function_exists('drush_bootstrap_finish')) {
-    // Only in Drush5.
-    drush_bootstrap_finish();
-    drush_die();
-  }
-  else {
-    // Drush4.
-    drush_set_context('DRUSH_EXECUTION_COMPLETED', TRUE);
-    exit();
-  }
+  drush_set_context('DRUSH_EXECUTION_COMPLETED', TRUE);
+  drupal_exit();
 }
 
 /**

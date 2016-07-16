@@ -1,42 +1,13 @@
 <?php
-// $Id: cron.php,v 1.1 2008/06/25 15:38:55 gotheric Exp $
 
 /**
- * ELYSIA_CRON
- * by Eric Berdondini (gotheric)
- * <eric@void.it>
- *
- * Features:
- * - crontab-like scheduling configuration of each job.
- * - grouping of jobs in channels (parallel lines of execution).
- * - you can disable all jobs, an entire channel or a single job via configuration.
- * - time statistics of each job and of the whole channel.
- * - modules can define extra cron tasks, each one with own default cron-rules
- *   (site administrators can override them by configuration).
- * - administrators can define custom jobs (call to functions with parameters)
- * - protection from external cron calling by cron_key or allowed host list.
- * - ensure all shutdown hook functions launched by cron jobs are launched inside
- *   cron protection (ex: search_cron() will launch search_update_totals() in a
- *   shutdown hook).
+ * @file
+ * Elysia cron primary module file.
  */
 
-require_once('elysia_cron_scheduler.inc');
-require_once('elysia_cron.admin.inc');
-require_once('elysia_cron.ctools.inc');
-
-$GLOBALS['elysia_cron_default_rules'] = array(
-  '*/15 * * * *' => 'Every 15 minutes',
-  '*/30 * * * *' => 'Every 30 minutes',
-  '0 * * * *' => 'Every hour',
-  '0 */6 * * *' => 'Every 6 hours',
-  '4 0 * * *' => 'Once a day',
-  '4 0 * * 0' => 'Once a week',
-  '4 0 1 * *' => 'Once a month',
-);
-
-/*******************************************************************************
- * DRUPAL HOOKS
- ******************************************************************************/
+require_once 'elysia_cron_scheduler.inc';
+require_once 'elysia_cron.admin.inc';
+require_once 'elysia_cron.ctools.inc';
 
 function elysia_cron_menu() {
   $items['admin/config/system/cron'] = array(
@@ -148,12 +119,12 @@ function elysia_cron_exit() {
  */
 function elysia_cron_cron() {
   global $elysia_cron_exit_phase, $elysia_cron_drush;
-  
+
   // If invoked "core-cron" via drush i'll redirect to elysia-cron handler
   if (function_exists('elysia_cron_drush_detect') && elysia_cron_drush_detect()) {
     elysia_cron_drush_invoke(true);
   }
-  
+
   // First cron run is executed in standard drupal way. This is to enable the use of install profiles
   if (variable_get('cron_last', 0) <= variable_get('install_time', 0)) {
     return;
@@ -224,17 +195,13 @@ function elysia_cron_help($section, $arg = false) {
 
 // Variables managed by _ec_variable method, because are setted during cron execution handling (with standard variable_set this will invalidate variable cache in EVERY cron clock)
 $GLOBALS['_ec_variables_allowed'] = array(
-  'elysia_cron_semaphore', 
+  'elysia_cron_semaphore',
   'elysia_cron_last_run',
   'elysia_cron_last_channel',
-  'cron_semaphore', 
+  'cron_semaphore',
   'cron_last',
 );
 
-$GLOBALS['_ec_columns'] = array(
-  'name', ' disable', ' rule', ' weight', ' context', ' running', ' last_run', ' last_aborted', ' abort_count', ' last_abort_function', ' last_execution_time', ' execution_count', ' avg_execution_time', ' max_execution_time', ' last_shutdown_time'
-);
- 
 function _ec_variable_init() {
   global $_ec_variables, $_ec_variables_allowed;
   $_ec_variables = array();
@@ -336,7 +303,7 @@ function elysia_cron_set($name, $channel = false, $values = array()) {
 function elysia_cron_get($name, $channel = false, $key = false, $default = false, $refresh = false) {
   global $elysia_cron_db_cache;
   static $elysia_cron_defaults;
-  
+
   if (!isset($elysia_cron_defaults)) {
     $elysia_cron_defaults = function_exists('elysia_cron_get_ctools_defaults') ? elysia_cron_get_ctools_defaults() : array();
   }
@@ -344,10 +311,10 @@ function elysia_cron_get($name, $channel = false, $key = false, $default = false
   if ($channel) {
     $name = ':' . $name;
   }
-  
+
   if ($refresh || !isset($elysia_cron_db_cache[$name])) {
     $elysia_cron_db_cache[$name] = db_select('elysia_cron', 'ec')
-      ->fields('ec', $GLOBALS['_ec_columns'])
+      ->fields('ec', _elysia_cron_columns())
       ->condition('name', $name)
       ->execute()
       ->fetchAssoc();
@@ -622,16 +589,16 @@ function elysia_cron_reset_stats() {
 
 /*******************************************************************************
  * INTERNAL
- * 
+ *
  * WARN: Below this point the word "context" should be avoided (use channel)
- *   Disabled should always be referenced as "disabled" (in db is "disable" for 
+ *   Disabled should always be referenced as "disabled" (in db is "disable" for
  *   compatibility with Ctools )
  *******************************************************************************/
 
 /**
  * Sends a standard message to user
  * Drush see it
- */ 
+ */
 function elysia_cron_message($message, $vars = array()) {
   global $elysia_cron_drush;
   if (empty($elysia_cron_drush)) {
@@ -685,10 +652,9 @@ function elysia_cron_warning($message, $vars = array()) {
 function elysia_cron_decode_script($text, $apply = true) {
   global $elysia_cron_settings;
 
-  $lines = explode("\n", $text);
+  $lines = explode(PHP_EOL, $text);
   $lastcomment = '';
   $errors = array();
-  $conf = array();
   foreach ($lines as $line) {
     $line = trim($line);
     if (!empty($line)) {
@@ -751,7 +717,7 @@ function elysia_cron_module_jobs() {
         );
       }
     }
-  
+
     foreach (module_implements('cronapi') as $module) {
       $fn = $module . '_cronapi';
       $l = $fn('list');
@@ -784,7 +750,7 @@ function elysia_cron_module_jobs() {
 
 function elysia_cron_initialize($skipscript = false) {
   global $elysia_cron_settings, $elysia_cron_settings_by_channel;
-  
+
   if (empty($elysia_cron_settings)) {
 
     $elysia_cron_settings = array();
@@ -797,7 +763,7 @@ function elysia_cron_initialize($skipscript = false) {
       if (!$defrule) {
         $defrule = variable_get('elysia_cron_default_rule', '0 * * * *');
       }
-      
+
       $defweight = !empty($jobpars['weight']) ? $jobpars['weight'] : 0;
       if (!is_numeric($defweight)) {
         $defweight = 0;
@@ -847,7 +813,7 @@ function _elysia_cron_sort($a, $b) {
 
 /**
  * Prepare system for a cron execution
- * 
+ *
  * This should be called at the start of a cron execution:
  * prepare_run
  *   lock_env
@@ -857,7 +823,7 @@ function _elysia_cron_sort($a, $b) {
  *     .. execute channel/jobs ..
  *   after_execution
  * unprepare_run
- * 
+ *
  */
 function elysia_cron_prepare_run($manual_run, $start = true) {
   static $original_user;
@@ -873,7 +839,7 @@ function elysia_cron_prepare_run($manual_run, $start = true) {
 
     // Prevent session information from being saved while cron is running.
     drupal_save_session(FALSE);
-    
+
     // Force the current user to anonymous to ensure consistent permissions on
     // cron runs (only if run by interface)
     if ($manual_run) {
@@ -894,7 +860,7 @@ function elysia_cron_prepare_run($manual_run, $start = true) {
 
 /**
  * Call this after a cron execution, prepared with elysia_cron_prepare_run()
- * 
+ *
  * @see: elysia_cron_prepare_run()
  */
 function elysia_cron_unprepare_run($manual_run) {
@@ -920,7 +886,7 @@ function elysia_cron_lock_env($channel = NULL) {
 
 /**
  * Unlock system locked with elysia_cron_lock_env
- * 
+ *
  * @see: elysia_cron_prepare_run()
  */
 function elysia_cron_unlock_env($channel = NULL) {
@@ -1014,7 +980,7 @@ function elysia_cron_run($manual_run = FALSE, $ignore_disable = FALSE, $ignore_t
  */
 function elysia_cron_run_channel($channel, $ignore_disable = false, $ignore_time = false, $ignore_running = false) {
   global $elysia_cron_settings_by_channel;
-  
+
   elysia_cron_prepare_run(true); // Always $manual_run
   if ($execute = elysia_cron_lock_env($channel)) {
     elysia_cron_initialize();
@@ -1054,7 +1020,7 @@ function elysia_cron_run_job($job, $ignore_disable = false, $ignore_time = false
   global $cron_completed, $cron_executing_job, $elysia_cron_settings;
 
   elysia_cron_initialize();
-  
+
   if (isset($elysia_cron_settings[$job])) {
     if (elysia_cron_should_run($elysia_cron_settings[$job], -1, $ignore_disable, $ignore_time)) {
       if ($ignore_running || !elysia_cron_check_run_job($job)) {
@@ -1077,8 +1043,8 @@ function elysia_cron_run_job($job, $ignore_disable = false, $ignore_time = false
   } else {
     elysia_cron_warning('Job not found, skipping');
   }
-  
-  
+
+
 }
 
 function elysia_cron_run_job_cleanup() {
@@ -1102,7 +1068,7 @@ function elysia_cron_run_job_cleanup() {
  */
 function elysia_cron_internal_execute_channel($channel, $jobs, $ignore_running = false) {
   global $elysia_cron_current_channel, $cron_completed, $cron_completed_time;
-  
+
   elysia_cron_debug('Cron channel %channel run started.', array('%channel' => $channel));
 
   $elysia_cron_current_channel = $channel;
@@ -1181,12 +1147,12 @@ function elysia_cron_internal_execute_job($job) {
 
 /**
  * Check if the channel is idle (not running, or stuck). If so set returns available jobs.
- * 
+ *
  * @return array of jobs ready to be executed, or FALSE if channel is running
  */
 function elysia_cron_check_run_channel($channel, $ignore_disable = false, $ignore_time = false, $ignore_running = false) {
   global $elysia_cron_settings_by_channel;
-  
+
   $jobs = false;
   $stuck_time = variable_get('elysia_cron_stuck_time', 3600);
   $sem = elysia_cron_is_channel_running($channel);
@@ -1218,12 +1184,12 @@ function elysia_cron_check_run_job($job) {
 
 /**
  * Find an idle channel (not running, or stuck). If found one, set it as running and returns available jobs.
- * 
+ *
  * @return if found returns array { 'name' => name of channel, 'jobs' => array of active jobs }, else return FALSE
  */
 function elysia_cron_run_available_channel($ignore_disable = false, $ignore_time = false, $ignore_running = false) {
   global $elysia_cron_settings_by_channel;
-  
+
   $channels = array_keys($elysia_cron_settings_by_channel);
   $channel = elysia_cron_last_channel();
   $i = array_search($channel, $channels);
@@ -1558,7 +1524,7 @@ function elysia_cron_queue_exec($queue_name, $info) {
  */
 function elysia_cron_admin_menu(&$deleted) {
   $links = array();
-  
+
   elysia_cron_initialize();
   global $elysia_cron_settings_by_channel;
 
@@ -1604,4 +1570,48 @@ function elysia_cron_admin_menu(&$deleted) {
 function _elysia_cron_function_available($func) {
   $disabled = explode(',', ini_get('disable_functions'));
   return !in_array($func, $disabled);
+}
+
+/**
+ * Get list of columns from elysia_cron table.
+ *
+ * @return array
+ *   List of columns.
+ */
+function _elysia_cron_columns() {
+  return array(
+    'name',
+    'disable',
+    'rule',
+    'weight',
+    'context',
+    'running',
+    'last_run',
+    'last_aborted',
+    'abort_count',
+    'last_abort_function',
+    'last_execution_time',
+    'execution_count',
+    'avg_execution_time',
+    'max_execution_time',
+    'last_shutdown_time',
+  );
+}
+
+/**
+ * Get list of predefined cron rules.
+ *
+ * @return array
+ *   List of predefined rules.
+ */
+function _elysia_cron_default_rules() {
+  return array(
+    '*/15 * * * *' => 'Every 15 minutes',
+    '*/30 * * * *' => 'Every 30 minutes',
+    '0 * * * *' => 'Every hour',
+    '0 */6 * * *' => 'Every 6 hours',
+    '4 0 * * *' => 'Once a day',
+    '4 0 * * 0' => 'Once a week',
+    '4 0 1 * *' => 'Once a month',
+  );
 }
