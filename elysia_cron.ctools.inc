@@ -81,7 +81,7 @@ function elysia_cron_ctools_export_load_all() {
   $export = $schema['export'];
 
   $objects = db_select('elysia_cron', 'ec')
-    ->fields('ec', $GLOBALS['_ec_columns'])
+    ->fields('ec', _elysia_cron_columns())
     ->execute()
     ->fetchAll();
   $default_objects = _ctools_export_get_defaults('elysia_cron', $export);
