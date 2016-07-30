@@ -704,8 +704,15 @@ function elysia_cron_decode_script($text, $apply = true) {
   return count($errors) ? $errors : false;
 }
 
+/**
+ * Fetch information about cron jobs from modules.
+ *
+ * @return array
+ *   Array with jobs information.
+ */
 function elysia_cron_module_jobs() {
   static $jobs;
+
   if (!isset($jobs)) {
     $jobs = array();
     foreach (module_implements('cron') as $module) {
@@ -719,30 +726,38 @@ function elysia_cron_module_jobs() {
     }
 
     foreach (module_implements('cronapi') as $module) {
-      $fn = $module . '_cronapi';
-      $l = $fn('list');
-      if (is_array($l)) {
-        foreach ($l as $job => $data) {
-          if (is_array($data)) {
-            $jobs[$job] = $data;
-          } else {
-            // Compatibility with v1.x settings
-            $jobs[$job] = array(
-              'description' => $data,
-              'rule' => ($d = $fn('rule', $job)) ? $d : false,
-              'weight' => ($d = $fn('weight', $job)) ? $d : 0,
+      $function = $module . '_cronapi';
+
+      if (function_exists($function)) {
+        $job_list = $function('list');
+
+        if (is_array($job_list)) {
+          foreach ($job_list as $job => $data) {
+            if (is_array($data)) {
+              $jobs[$job] = $data;
+            }
+            else {
+              // Compatibility with v1.x settings.
+              $jobs[$job] = array(
+                'description' => $data,
+                'rule' => ($rule = $function('rule', $job)) ? $rule : false,
+                'weight' => ($weight = $function('weight', $job)) ? $weight : 0,
+              );
+            }
+
+            $jobs[$job] = $jobs[$job] + array(
+              'module' => $module,
+              'callback' => is_callable($job) ? $job : $function,
+              'arguments' => is_callable($job) ? array() : array('execute', $job),
             );
           }
-          $jobs[$job] = $jobs[$job] + array(
-            'module' => $module,
-            'callback' => function_exists($job) ? $job : $fn,
-            'arguments' => function_exists($job) ? array() : array('execute', $job),
-          );
         }
       }
     }
-    if (function_exists('drupal_alter'))
+
+    if (function_exists('drupal_alter')) {
       drupal_alter('cron', $jobs);
+    }
   }
 
   return $jobs;
@@ -1117,7 +1132,7 @@ function elysia_cron_internal_execute_job($job) {
     if (!empty($elysia_cron_settings[$job]['expression'])) {
       eval($elysia_cron_settings[$job]['expression']);
     }
-    elseif (!empty($elysia_cron_settings[$job]['callback']) && function_exists($elysia_cron_settings[$job]['callback'])) {
+    elseif (!empty($elysia_cron_settings[$job]['callback']) && is_callable($elysia_cron_settings[$job]['callback'])) {
       call_user_func_array($elysia_cron_settings[$job]['callback'], $elysia_cron_settings[$job]['arguments']);
     }
     else {
@@ -1125,14 +1140,13 @@ function elysia_cron_internal_execute_job($job) {
     }
   }
   catch (Exception $e) {
-    elysia_cron_error('Exception: ' . $e, array(), true);
-    $exception = true;
-    //TODO Manage it
+    watchdog_exception('cron', $e);
   }
 
   $stats = elysia_cron_get_job_stats($job);
   $time = time() - $time;
-  elysia_cron_set_job_stats($job,
+  elysia_cron_set_job_stats(
+    $job,
     -1,
     $time,
     ($c = $stats['execution_count'] + 1),
@@ -1143,7 +1157,6 @@ function elysia_cron_internal_execute_job($job) {
 
   elysia_cron_debug('Cron job %job ended in %time secs.', array('%job' => $job, '%time' => $time));
 }
-
 
 /**
  * Check if the channel is idle (not running, or stuck). If so set returns available jobs.
