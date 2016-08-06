@@ -319,6 +319,13 @@ EOT
     '#options' => $options,
   );
 
+  $form['installation']['elysia_cron_queue_show_count'] = array(
+    '#title' => t('Show the number of items in queues'),
+    '#description' => t('Some queue backends may have performance issue related with counting items in queue. If you faced with it, just disable this option.'),
+    '#type' => 'checkbox',
+    '#default_value' => variable_get('elysia_cron_queue_show_count', TRUE),
+  );
+
   $form['installation']['cron_key'] = array(
     '#title' => t('Cron key'),
     '#type' => 'textfield',

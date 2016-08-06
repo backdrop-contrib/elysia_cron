@@ -1494,9 +1494,17 @@ function elysia_cron_cronapi($op, $job = false) {
     $queue = DrupalQueue::get($queue_name);
     $queue->createQueue();
 
+    // Some queue backends may have performance issues with counting items.
+    if (variable_get('elysia_cron_queue_show_count', TRUE)) {
+      $queue_description = $queue_name . ' queue processing (Items count: <strong>' . $queue->numberOfItems() . '</strong>, worker max duration: <strong>' . (isset($info['time']) ? $info['time'] . 's' : t('unspecified') . ' (15s)') . '</strong>)';
+    }
+    else {
+      $queue_description = $queue_name . ' queue processing (Worker max duration: <strong>' . (isset($info['time']) ? $info['time'] . 's' : t('unspecified') . ' (15s)') . '</strong>)';
+    }
+
     $items['queue_' . $queue_name] = array(
-      'description' => $queue_name . ' queue processing (Items count: <strong>' . $queue->numberOfItems() . '</strong>, worker max duration: <strong>' . (isset($info['time']) ? $info['time'] . 's' : t('unspecified') . ' (15s)') . '</strong>)',
-      'rule' => variable_get('elysia_cron_queue_default_rule', false),
+      'description' => $queue_description,
+      'rule' => variable_get('elysia_cron_queue_default_rule', FALSE),
       'weight' => variable_get('elysia_cron_queue_default_weight', 100),
       'callback' => 'elysia_cron_queue_exec',
       'arguments' => array($queue_name, $info),
