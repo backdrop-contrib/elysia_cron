@@ -93,10 +93,10 @@ function drush_elysia_cron_run_wrapper($op = FALSE, $target = FALSE) {
 
   switch ($op) {
     case 'list':
-      global $elysia_cron_settings_by_channel;
+      global $_elysia_cron_settings_by_channel;
       elysia_cron_initialize();
 
-      foreach ($elysia_cron_settings_by_channel as $channel => $jobs) {
+      foreach ($_elysia_cron_settings_by_channel as $channel => $jobs) {
         $lines = array();
         if (!$verbose) {
           $line = array('@' . $channel);

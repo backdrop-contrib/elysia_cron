@@ -23,7 +23,7 @@ function _elysia_cron_next_run($conf) {
   if (!isset($conf['rule'])) {
     return false;
   }
-  
+
   $ranges = array(
     array(0, 59),
     array(0, 23),
@@ -42,7 +42,7 @@ function _elysia_cron_next_run($conf) {
   $ruledec = array();
   $date = __cronDecodeDate($conf['last_run'], 1);
   $expected_date = __cronDecodeDate(!empty($conf['last_run_expected']) ? $conf['last_run_expected'] : 0);
-  
+
   for ($i = 0; $i < 4; $i++) {
     if ($i != 2) {
       // Standard scheme for mins, hours, month
@@ -85,7 +85,7 @@ function _elysia_cron_next_run($conf) {
 function __cronDecodeDate($timestamp, $min_diff = 0) {
   $time = floor($timestamp / 60);
   $time += $min_diff;
-  
+
   $date = $time ? getdate($time * 60) : 0;
   $date = array(
     $time ? $date['minutes'] : 0,
@@ -158,7 +158,7 @@ function __cronMonDaysFromWeekDays($year, $mon, $weekdays, $offset = 0) {
     $year ++;
     $mon = $mon - 12;
   }
-  
+
   $result = array();
   for ($i = 1; checkdate($mon, $i, $year); $i++) {
     $w = date('w', mktime(12, 00, 00, $mon, $i, $year));
@@ -176,7 +176,7 @@ function __cronMonDaysFromWeekDays($year, $mon, $weekdays, $offset = 0) {
 function test_elysia_cron_should_run() {
   dprint("Start test");
   $start = microtime(true);
-  
+
   //mktime: hr min sec mon day yr
   dprint(" 1." . (false == elysia_cron_should_run(array('rule' => '0 12 * * *', 'last_run' => mktime(12, 0, 0, 1, 2, 2008)), mktime(12, 01, 0, 1, 2, 2008))));
   dprint(" 2." . (false == elysia_cron_should_run(array('rule' => '0 12 * * *', 'last_run' => mktime(12, 0, 0, 1, 2, 2008)), mktime(15, 00, 0, 1, 2, 2008))));

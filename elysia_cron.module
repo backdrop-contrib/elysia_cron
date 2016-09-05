@@ -849,7 +849,7 @@ function elysia_cron_set_last_channel($channel) {
 }
 
 function elysia_cron_reset_stats() {
-  global $_elysia_cron_settings, $elysia_cron_settings_by_channel;
+  global $_elysia_cron_settings, $_elysia_cron_settings_by_channel;
   elysia_cron_initialize();
 
   foreach ($_elysia_cron_settings as $job => $conf) {
@@ -867,7 +867,7 @@ function elysia_cron_reset_stats() {
     'abort_count' => 0,
     'last_abort_function' => 0,
   );
-  foreach ($elysia_cron_settings_by_channel as $channel => $conf) {
+  foreach ($_elysia_cron_settings_by_channel as $channel => $conf) {
     elysia_cron_set_channel_stats($channel, $channel_reset_data);
   }
 }
@@ -1056,12 +1056,12 @@ function elysia_cron_module_jobs() {
 }
 
 function elysia_cron_initialize($skipscript = FALSE) {
-  global $_elysia_cron_settings, $elysia_cron_settings_by_channel;
+  global $_elysia_cron_settings, $_elysia_cron_settings_by_channel;
 
   if (empty($_elysia_cron_settings)) {
 
     $_elysia_cron_settings = array();
-    $elysia_cron_settings_by_channel = array();
+    $_elysia_cron_settings_by_channel = array();
 
     foreach (elysia_cron_module_jobs() as $job => $jobpars) {
       $channel = elysia_cron_get_job_channel($job, 'default');
@@ -1100,13 +1100,13 @@ function elysia_cron_initialize($skipscript = FALSE) {
       foreach ($stats as $sk => $sv) {
         $conf[$sk] = $sv;
       }
-      $elysia_cron_settings_by_channel[$conf['channel']][$job] = &$_elysia_cron_settings[$job];
+      $_elysia_cron_settings_by_channel[$conf['channel']][$job] = &$_elysia_cron_settings[$job];
     }
 
-    foreach ($elysia_cron_settings_by_channel as $channel => $data) {
-      uasort($elysia_cron_settings_by_channel[$channel], '_elysia_cron_sort');
-      $elysia_cron_settings_by_channel[$channel]['#data'] = elysia_cron_get_channel_stats($channel);
-      $elysia_cron_settings_by_channel[$channel]['#data']['disabled'] = elysia_cron_is_channel_disabled($channel);
+    foreach ($_elysia_cron_settings_by_channel as $channel => $data) {
+      uasort($_elysia_cron_settings_by_channel[$channel], '_elysia_cron_sort');
+      $_elysia_cron_settings_by_channel[$channel]['#data'] = elysia_cron_get_channel_stats($channel);
+      $_elysia_cron_settings_by_channel[$channel]['#data']['disabled'] = elysia_cron_is_channel_disabled($channel);
     }
   }
 }
@@ -1295,15 +1295,15 @@ function elysia_cron_run($manual_run = FALSE, $ignore_disable = FALSE, $ignore_t
  *   Run the channel (and all it's jobs) even if already running.
  */
 function elysia_cron_run_channel($channel, $ignore_disable = FALSE, $ignore_time = FALSE, $ignore_running = FALSE) {
-  global $elysia_cron_settings_by_channel;
+  global $_elysia_cron_settings_by_channel;
 
   // Always $manual_run.
   elysia_cron_prepare_run(TRUE);
   if ($execute = elysia_cron_lock_env($channel)) {
     elysia_cron_initialize();
     $jobs = FALSE;
-    if (isset($elysia_cron_settings_by_channel[$channel])) {
-      if ($ignore_disable || empty($elysia_cron_settings_by_channel[$channel]['#data']['disabled'])) {
+    if (isset($_elysia_cron_settings_by_channel[$channel])) {
+      if ($ignore_disable || empty($_elysia_cron_settings_by_channel[$channel]['#data']['disabled'])) {
         $jobs = elysia_cron_check_run_channel($channel, $ignore_disable, $ignore_time, $ignore_running);
         if ($jobs && count($jobs)) {
           // elysia_cron_internal_execute_channel calls elysia_cron_unlock_env.
@@ -1475,7 +1475,7 @@ function elysia_cron_internal_execute_job($job) {
  * @return array of jobs ready to be executed, or FALSE if channel is running
  */
 function elysia_cron_check_run_channel($channel, $ignore_disable = FALSE, $ignore_time = FALSE, $ignore_running = FALSE) {
-  global $elysia_cron_settings_by_channel;
+  global $_elysia_cron_settings_by_channel;
 
   $jobs = FALSE;
   $stuck_time = variable_get('elysia_cron_stuck_time', 3600);
@@ -1486,7 +1486,7 @@ function elysia_cron_check_run_channel($channel, $ignore_disable = FALSE, $ignor
     unset($sem);
     elysia_cron_error('Cron channel (%channel) has been running for more than an %stuck_time secs and is most likely stuck. Last job executed: %job', array('%channel' => $channel, '%stuck_time' => $stuck_time, '%job' => $last_job), TRUE);
   }
-  if (($ignore_running || empty($sem)) && ($ignore_disable || !$elysia_cron_settings_by_channel[$channel]['#data']['disabled'])) {
+  if (($ignore_running || empty($sem)) && ($ignore_disable || !$_elysia_cron_settings_by_channel[$channel]['#data']['disabled'])) {
     $jobs = elysia_cron_active_jobs($channel, $ignore_disable, $ignore_time);
   }
   return $jobs;
@@ -1512,9 +1512,9 @@ function elysia_cron_check_run_job($job) {
  * @return if found returns array { 'name' => name of channel, 'jobs' => array of active jobs }, else return FALSE
  */
 function elysia_cron_run_available_channel($ignore_disable = FALSE, $ignore_time = FALSE, $ignore_running = FALSE) {
-  global $elysia_cron_settings_by_channel;
+  global $_elysia_cron_settings_by_channel;
 
-  $channels = array_keys($elysia_cron_settings_by_channel);
+  $channels = array_keys($_elysia_cron_settings_by_channel);
   $channel = elysia_cron_last_channel();
   $i = array_search($channel, $channels);
   if ($i === FALSE) {
@@ -1536,10 +1536,10 @@ function elysia_cron_run_available_channel($ignore_disable = FALSE, $ignore_time
 }
 
 function elysia_cron_execute_aborted($channel) {
-  global $elysia_cron_settings_by_channel;
+  global $_elysia_cron_settings_by_channel;
 
   $last_job = '';
-  foreach ($elysia_cron_settings_by_channel[$channel] as $job => $conf) {
+  foreach ($_elysia_cron_settings_by_channel[$channel] as $job => $conf) {
     if ($job != '#data') {
       if (elysia_cron_is_job_running($job)) {
         $last_job .= ' ' . $job;
@@ -1616,10 +1616,10 @@ function elysia_cron_internal_execute_channel_completed() {
  * Get all jobs that needs to be executed in a channel
  */
 function elysia_cron_active_jobs($channel, $ignore_disable = FALSE, $ignore_time = FALSE) {
-  global $elysia_cron_settings_by_channel;
+  global $_elysia_cron_settings_by_channel;
 
   $jobs = array();
-  foreach ($elysia_cron_settings_by_channel[$channel] as $job => $conf) {
+  foreach ($_elysia_cron_settings_by_channel[$channel] as $job => $conf) {
     if ($job != '#data') {
       if (elysia_cron_should_run($conf, -1, $ignore_disable, $ignore_time)) {
         $jobs[] = $job;
@@ -1634,11 +1634,11 @@ function elysia_cron_active_jobs($channel, $ignore_disable = FALSE, $ignore_time
  * (Not used by elysia_cron, can be used by external modules)
  */
 function elysia_cron_is_running() {
-  global $elysia_cron_settings_by_channel;
+  global $_elysia_cron_settings_by_channel;
   elysia_cron_initialize();
 
   $running = array();
-  foreach ($elysia_cron_settings_by_channel as $channel => $data) {
+  foreach ($_elysia_cron_settings_by_channel as $channel => $data) {
     if (elysia_cron_is_channel_running($channel)) {
       $running[] = $channel;
     }
@@ -1653,8 +1653,8 @@ function elysia_cron_job_exists($job) {
 }
 
 function elysia_cron_channel_exists($channel) {
-  global $elysia_cron_settings_by_channel;
-  return isset($elysia_cron_settings_by_channel[$channel]);
+  global $_elysia_cron_settings_by_channel;
+  return isset($_elysia_cron_settings_by_channel[$channel]);
 }
 
 /**
@@ -1862,7 +1862,7 @@ function elysia_cron_admin_menu(&$deleted) {
   $links = array();
 
   elysia_cron_initialize();
-  global $elysia_cron_settings_by_channel;
+  global $_elysia_cron_settings_by_channel;
 
   // Add link to manually run cron.
   $links[] = array(
@@ -1873,7 +1873,7 @@ function elysia_cron_admin_menu(&$deleted) {
     'parent_path' => '<front>',
   );
 
-  foreach ($elysia_cron_settings_by_channel as $channel => $data) {
+  foreach ($_elysia_cron_settings_by_channel as $channel => $data) {
     foreach ($data as $job => $conf) {
       if ($job != '#data') {
         $links[] = array(

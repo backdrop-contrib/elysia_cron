@@ -20,7 +20,7 @@ function elysia_cron_admin_page() {
 
   $output = '';
   elysia_cron_initialize();
-  global $elysia_cron_settings_by_channel;
+  global $_elysia_cron_settings_by_channel;
 
   $global_disabled = variable_get('elysia_cron_disabled', FALSE);
   $last_channel = elysia_cron_last_channel();
@@ -28,7 +28,7 @@ function elysia_cron_admin_page() {
   $output .= '<p>' . t('Last channel executed') . ': <i>' . ($last_channel ? $last_channel : t('n/a')) . '</i></p>';
 
   $running = '';
-  foreach ($elysia_cron_settings_by_channel as $channel => $data) {
+  foreach ($_elysia_cron_settings_by_channel as $channel => $data) {
     if (elysia_cron_is_channel_running($channel)) {
       $running .= $channel . ' ';
     }
@@ -41,7 +41,7 @@ function elysia_cron_admin_page() {
   $rows = array();
   $ipath = drupal_get_path('module', 'elysia_cron') . '/images/icon_';
 
-  foreach ($elysia_cron_settings_by_channel as $channel => $data) {
+  foreach ($_elysia_cron_settings_by_channel as $channel => $data) {
     $running = elysia_cron_is_channel_running($channel);
     $rows[] = array(
       array(
@@ -183,7 +183,7 @@ function elysia_cron_admin_page() {
  *   From API array.
  */
 function elysia_cron_settings_form() {
-  global $elysia_cron_settings_by_channel;
+  global $_elysia_cron_settings_by_channel;
   elysia_cron_initialize();
 
   $form = array();
@@ -437,7 +437,7 @@ EOT
     '#collapsed' => TRUE,
   );
 
-  foreach ($elysia_cron_settings_by_channel as $channel => $cconf) {
+  foreach ($_elysia_cron_settings_by_channel as $channel => $cconf) {
     foreach ($cconf as $job => $conf) {
       if ($job != '#data' && empty($conf['expression'])) {
         $form['single_job']['elysia_cron_' . $job] = array(
@@ -499,7 +499,7 @@ EOT
     '#collapsible' => TRUE,
   );
 
-  foreach ($elysia_cron_settings_by_channel as $channel => $conf) {
+  foreach ($_elysia_cron_settings_by_channel as $channel => $conf) {
     $form['channels']['elysia_cron_ch_' . $channel] = array(
       '#title' => $channel,
       '#type' => 'fieldset',
