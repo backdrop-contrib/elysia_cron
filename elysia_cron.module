@@ -401,13 +401,13 @@ function elysia_cron_is_channel_disabled($channel, $default = FALSE, $refresh = 
  *
  * @param string $channel
  *   Channel name.
- * @param bool $v
+ * @param bool $value
  *   New channel status:
  *   TRUE - enabled
  *   FALSE - disabled.
  */
-function elysia_cron_set_channel_disabled($channel, $v) {
-  elysia_cron_set($channel, TRUE, array('disable' => $v ? 1 : 0));
+function elysia_cron_set_channel_disabled($channel, $value) {
+  elysia_cron_set($channel, TRUE, array('disable' => $value ? 1 : 0));
 }
 
 /**
@@ -420,6 +420,19 @@ function elysia_cron_reset_channel_disabled($channel) {
   elysia_cron_set($channel, TRUE, array('disable' => 0));
 }
 
+/**
+ * Get channel's rule.
+ *
+ * @param string $channel
+ *   Channel name.
+ * @param string $default
+ *   Default rule.
+ * @param bool $refresh
+ *   If TRUE - fresh status will be get from database.
+ *
+ * @return string
+ *   Formatted rule for specified channel.
+ */
 function elysia_cron_get_channel_rule($channel, $default = '', $refresh = FALSE) {
   // May be overridden by a static conf.
   if (isset($GLOBALS['conf'][$n = 'ecc_' . _ec_get_name($channel) . '_rul'])) {
@@ -429,44 +442,129 @@ function elysia_cron_get_channel_rule($channel, $default = '', $refresh = FALSE)
   return elysia_cron_get($channel, TRUE, 'rule', $default, $refresh);
 }
 
-function elysia_cron_set_channel_rule($channel, $v) {
-  elysia_cron_set($channel, TRUE, array('rule' => $v));
+/**
+ * Set new rule for channel.
+ *
+ * @param string $channel
+ *   Channel name.
+ * @param string $rule
+ *   Crontab formatted rule.
+ */
+function elysia_cron_set_channel_rule($channel, $rule) {
+  elysia_cron_set($channel, TRUE, array('rule' => $rule));
 }
 
+/**
+ * Reset channel's rule to default.
+ *
+ * @param string $channel
+ *   Channel name.
+ */
 function elysia_cron_reset_channel_rule($channel) {
   elysia_cron_set($channel, TRUE, array('rule' => NULL));
 }
 
+/**
+ * Check if channel is running now.
+ *
+ * @param string $channel
+ *   Channel name.
+ * @param int $default
+ *   Default value.
+ * @param bool $refresh
+ *   If TRUE - fresh status will be get from database.
+ *
+ * @return int
+ *   Timestamp from beginning of running or zero.
+ */
 function elysia_cron_is_channel_running($channel, $default = 0, $refresh = FALSE) {
   return elysia_cron_get($channel, TRUE, 'running', $default, $refresh);
 }
 
-function elysia_cron_set_channel_running($channel, $v) {
-  elysia_cron_set($channel, TRUE, array('running' => $v));
+/**
+ * Updated channel running value.
+ *
+ * @param string $channel
+ *   Channel name.
+ * @param int $value
+ *   New running value.
+ */
+function elysia_cron_set_channel_running($channel, $value) {
+  elysia_cron_set($channel, TRUE, array('running' => $value));
 }
 
-function elysia_cron_get_channel_last_run($channel, $default = FALSE, $refresh = FALSE) {
+/**
+ * Get channel's last run value.
+ *
+ * @param string $channel
+ *   Channel name.
+ * @param int $default
+ *   Default value.
+ * @param bool $refresh
+ *   If TRUE - fresh status will be get from database.
+ *
+ * @return int
+ *   Last run timestamp or zero.
+ *
+ * @todo Not used, to delete?
+ */
+function elysia_cron_get_channel_last_run($channel, $default = 0, $refresh = FALSE) {
   return elysia_cron_get($channel, TRUE, 'last_run', $default, $refresh);
 }
 
-function elysia_cron_set_channel_last_run($channel, $v) {
-  elysia_cron_set($channel, TRUE, array('last_run' => $v));
+/**
+ * Get channel's last run value.
+ *
+ * @param string $channel
+ *   Channel name.
+ * @param int $value
+ *   New last run timestamp.
+ *
+ * @todo Not used, to delete?
+ */
+function elysia_cron_set_channel_last_run($channel, $value) {
+  elysia_cron_set($channel, TRUE, array('last_run' => $value));
 }
 
+/**
+ * Get channel's last aborted value.
+ *
+ * @param string $channel
+ *   Channel name.
+ * @param int $default
+ *   Default value.
+ * @param bool $refresh
+ *   If TRUE - fresh status will be get from database.
+ *
+ * @return int
+ *   Last aborted timestamp or zero.
+ *
+ * @todo Not used, to delete?
+ */
 function elysia_cron_get_channel_last_aborted($channel, $default = 0, $refresh = FALSE) {
   return elysia_cron_get($channel, TRUE, 'last_aborted', $default, $refresh);
 }
 
-function elysia_cron_set_channel_last_aborted($channel, $v) {
-  elysia_cron_set($channel, TRUE, array('last_aborted' => $v ? 1 : 0));
+/**
+ * Get channel's last aborted value.
+ *
+ * @param string $channel
+ *   Channel name.
+ * @param int $value
+ *   New last aborted timestamp.
+ *
+ * @todo Not used, to delete?
+ */
+function elysia_cron_set_channel_last_aborted($channel, $value) {
+  elysia_cron_set($channel, TRUE, array('last_aborted' => $value ? 1 : 0));
 }
 
 function elysia_cron_get_channel_abort_count($channel, $default = 0, $refresh = FALSE) {
   return elysia_cron_get($channel, TRUE, 'abort_count', $default, $refresh);
 }
 
-function elysia_cron_set_channel_abort_count($channel, $v) {
-  elysia_cron_set($channel, TRUE, array('abort_count' => $v));
+function elysia_cron_set_channel_abort_count($channel, $value) {
+  elysia_cron_set($channel, TRUE, array('abort_count' => $value));
 }
 
 function elysia_cron_get_channel_last_abort_function($channel, $default = '', $refresh = FALSE) {
@@ -542,8 +640,8 @@ function elysia_cron_get_job_rule($job, $default = '', $refresh = FALSE) {
   return elysia_cron_get($job, FALSE, 'rule', $default, $refresh);
 }
 
-function elysia_cron_set_job_rule($job, $v) {
-  return elysia_cron_set($job, FALSE, array('rule' => $v));
+function elysia_cron_set_job_rule($job, $value) {
+  return elysia_cron_set($job, FALSE, array('rule' => $value));
 }
 
 function elysia_cron_reset_job_rule($job) {
@@ -558,8 +656,8 @@ function elysia_cron_get_job_weight($job, $default = '', $refresh = FALSE) {
   return elysia_cron_get($job, FALSE, 'weight', $default, $refresh);
 }
 
-function elysia_cron_set_job_weight($job, $v) {
-  return elysia_cron_set($job, FALSE, array('weight' => $v));
+function elysia_cron_set_job_weight($job, $value) {
+  return elysia_cron_set($job, FALSE, array('weight' => $value));
 }
 
 function elysia_cron_reset_job_weight($job) {
@@ -574,8 +672,8 @@ function elysia_cron_is_job_disabled($job, $default = FALSE, $refresh = FALSE) {
   return elysia_cron_get($job, FALSE, 'disable', $default, $refresh);
 }
 
-function elysia_cron_set_job_disabled($job, $v) {
-  return elysia_cron_set($job, FALSE, array('disable' => $v ? 1 : 0));
+function elysia_cron_set_job_disabled($job, $value) {
+  return elysia_cron_set($job, FALSE, array('disable' => $value ? 1 : 0));
 }
 
 function elysia_cron_reset_job_disabled($job) {
@@ -594,9 +692,9 @@ function elysia_cron_get_job_channel($job, $default = '', $refresh = FALSE) {
   return !$c ? $default : $c;
 }
 
-function elysia_cron_set_job_channel($job, $v) {
+function elysia_cron_set_job_channel($job, $value) {
   // In this place, 'context' means 'channel'.
-  return elysia_cron_set($job, FALSE, array('context' => $v));
+  return elysia_cron_set($job, FALSE, array('context' => $value));
 }
 
 function elysia_cron_reset_job_channel($job) {
@@ -608,16 +706,16 @@ function elysia_cron_is_job_running($job, $default = 0, $refresh = FALSE) {
   return elysia_cron_get($job, FALSE, 'running', $default, $refresh);
 }
 
-function elysia_cron_set_job_running($job, $v) {
-  return elysia_cron_set($job, FALSE, array('running' => $v));
+function elysia_cron_set_job_running($job, $value) {
+  return elysia_cron_set($job, FALSE, array('running' => $value));
 }
 
 function elysia_cron_get_job_last_run($job, $default = 0, $refresh = FALSE) {
   return elysia_cron_get($job, FALSE, 'last_run', $default, $refresh);
 }
 
-function elysia_cron_set_job_last_run($job, $v) {
-  return elysia_cron_set($job, FALSE, array('last_run' => $v));
+function elysia_cron_set_job_last_run($job, $value) {
+  return elysia_cron_set($job, FALSE, array('last_run' => $value));
 }
 
 function elysia_cron_get_job_stats($job, $refresh = FALSE) {
