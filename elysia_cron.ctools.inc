@@ -32,7 +32,7 @@ function elysia_cron_get_ctools_defaults() {
  * @param string $name
  *   Cron job name.
  *
- * @return object|NULL
+ * @return object|null
  *   Object to export or NULL if nothing found.
  */
 function elysia_cron_ctools_export_load($name) {
@@ -105,8 +105,8 @@ function elysia_cron_ctools_export_load_all() {
 }
 
 /**
- * @param $object
- * @param $code_object
+ * @param object $object
+ * @param object $code_object
  * @param array $export
  *
  * @return object
@@ -135,8 +135,8 @@ function _elysia_cron_ctools_export_load_object_db_and_code($object, $code_objec
 }
 
 /**
- * @param $object
- * @param $export
+ * @param object $object
+ * @param array $export
  *
  * @return object
  */
@@ -150,8 +150,8 @@ function _elysia_cron_ctools_export_load_object_db($object, $export) {
 }
 
 /**
- * @param $object
- * @param $export
+ * @param object $object
+ * @param array $export
  *
  * @return object
  */
@@ -173,7 +173,7 @@ function _elysia_cron_ctools_export_load_object_code($object, $export) {
  * This function does not support $schema['join'].
  *
  * @param array $schema
- * @param $data
+ * @param object $data
  *
  * @return object
  */

@@ -75,7 +75,7 @@ function elysia_cron_drush_command() {
  * Custom callback for 'elysia-cron' drush command.
  */
 function drush_elysia_cron_run_wrapper($op = FALSE, $target = FALSE) {
-  global $elysia_cron_drush;
+  global $_elysia_cron_drush;
 
   if (variable_get('maintenance_mode', FALSE)) {
     if (!variable_get('elysia_cron_run_maintenance', FALSE)) {
@@ -89,7 +89,7 @@ function drush_elysia_cron_run_wrapper($op = FALSE, $target = FALSE) {
   if (!$verbose) {
     $verbose = drush_get_option('elysia-cron-verbose', FALSE);
   }
-  $elysia_cron_drush = $quiet ? 1 : !$verbose ? 2 : 3;
+  $_elysia_cron_drush = $quiet ? 1 : !$verbose ? 2 : 3;
 
   switch ($op) {
     case 'list':
