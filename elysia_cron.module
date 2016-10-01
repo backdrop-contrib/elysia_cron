@@ -1233,14 +1233,20 @@ function elysia_cron_build_semaphore_name($channel) {
  *   Run the channel (and all it's jobs) even if already running.
  */
 function elysia_cron_run($manual_run = FALSE, $ignore_disable = FALSE, $ignore_time = FALSE, $ignore_running = FALSE) {
+  global $_elysia_cron_exit_phase;
+
   // If DISABLED block the execution.
   if (!$ignore_disable && variable_get('elysia_cron_disabled', FALSE)) {
     elysia_cron_debug('Cron globally disabled, skipping run');
     return;
   }
 
-  // Check for CRON_KEY or ALLOWED_HOSTS.
-  if (!$manual_run) {
+  if (!empty($_elysia_cron_exit_phase)) {
+    // We on "poormanscron" mode,
+    // not necessary to do checks for cron_key or host or permission.
+  }
+  elseif (!$manual_run) {
+    // Check for CRON_KEY or ALLOWED_HOSTS.
     if (!drupal_is_cli()) {
       $cron_key = variable_get('cron_key', '');
       if ($cron_key && (empty($_GET['cron_key']) || $_GET['cron_key'] != $cron_key)) {
@@ -1254,7 +1260,8 @@ function elysia_cron_run($manual_run = FALSE, $ignore_disable = FALSE, $ignore_t
       }
     }
   }
-  elseif (!user_access('execute elysia_cron')) {
+  elseif (!elysia_cron_access('execute elysia_cron')) {
+    elysia_cron_debug('Access denied for cron launching');
     return;
   }
 
