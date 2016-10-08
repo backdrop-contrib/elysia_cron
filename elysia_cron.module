@@ -1685,7 +1685,7 @@ function elysia_cron_description($job) {
  ******************************************************************************/
 
 /**
- * Implementation of hook_theme(). [Only D6+D7]
+ * Implementation of hook_theme().
  */
 function elysia_cron_theme() {
   return array(
