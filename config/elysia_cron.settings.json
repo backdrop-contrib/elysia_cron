@@ -1,0 +1,24 @@
+{
+    "_config_name": "elysia_cron.settings",
+    "alert_interval": 60,
+    "queue_show_count": true,
+    "queue_default_rule": false,
+    "queue_default_weight": 100,
+    "default_rule": "0 * * * *",
+    "script": "",
+    "time_limit": 240,
+    "disabled": false,
+    "allowed_hosts": false,
+    "stuck_time": 3600,
+    "run_maintenance": false,
+    "debug_messages": 0,
+    "default_rules": {
+        "*/15 * * * *": "Every 15 minutes",
+        "*/30 * * * *": "Every 30 minutes",
+        "0 * * * *": "Every hour",
+        "0 */6 * * *": "Every 6 hours",
+        "4 0 * * *": "Once a day",
+        "4 0 * * 0": "Once a week",
+        "4 0 1 * *": "Once a month"
+    }
+}

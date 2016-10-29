@@ -13,16 +13,17 @@
  */
 function elysia_cron_admin_page() {
   $aoutput = array();
+  $config = config('elysia_cron.settings');
 
   if (elysia_cron_access('execute elysia_cron')) {
-    $aoutput[] = drupal_get_form('elysia_cron_run_form');
+    $aoutput[] = backdrop_get_form('elysia_cron_run_form');
   }
 
   $output = '';
   elysia_cron_initialize();
   global $_elysia_cron_settings_by_channel;
 
-  $global_disabled = variable_get('elysia_cron_disabled', FALSE);
+  $global_disabled = $config->get('disabled');
   $last_channel = elysia_cron_last_channel();
   $output .= '<p>' . t('Global disable') . ': <i>' . ($global_disabled ? '<span class="warn">' . t('YES') . '</span>' : t('no')) . '</i></p>';
   $output .= '<p>' . t('Last channel executed') . ': <i>' . ($last_channel ? $last_channel : t('n/a')) . '</i></p>';
@@ -37,10 +38,9 @@ function elysia_cron_admin_page() {
     $output .= '<p>' . t('Running channels') . ': <span class="warn">' . $running . '</span></p>';
   }
 
-  $output .= '<p>' . t('Last run') . ': ' . elysia_cron_date(_ec_variable_get('elysia_cron_last_run', 0)) . '</p>';
+  $output .= '<p>' . t('Last run') . ': ' . elysia_cron_date(state_get('elysia_cron_last_run')) . '</p>';
   $rows = array();
-  $ipath = drupal_get_path('module', 'elysia_cron') . '/images/icon_';
-
+  $ipath = backdrop_get_path('module', 'elysia_cron') . '/images/icon_';
   foreach ($_elysia_cron_settings_by_channel as $channel => $data) {
     $running = elysia_cron_is_channel_running($channel);
     $rows[] = array(
@@ -114,7 +114,7 @@ function elysia_cron_admin_page() {
           : '';
 
         $icon_image = theme('image', array(
-          'path' => $ipath . $icon . '.png',
+          'uri' => $ipath . $icon . '.png',
           'alt' => $tip,
           'title' => $tip,
         ));
@@ -151,10 +151,10 @@ function elysia_cron_admin_page() {
   $output .= '<br />';
 
   $legend_icons = array(
-    'idle' => theme('image', array('path' => $ipath . 'idle.png')),
-    'waiting' => theme('image', array('path' => $ipath . 'waiting.png')),
-    'running' => theme('image', array('path' => $ipath . 'running.png')),
-    'disabled' => theme('image', array('path' => $ipath . 'disabled.png')),
+    'idle' => theme('image', array('uri' => $ipath . 'idle.png')),
+    'waiting' => theme('image', array('uri' => $ipath . 'waiting.png')),
+    'running' => theme('image', array('uri' => $ipath . 'running.png')),
+    'disabled' => theme('image', array('uri' => $ipath . 'disabled.png')),
   );
   $output .= theme('table', array(
     'header' => array(t('Legend')),
@@ -187,6 +187,7 @@ function elysia_cron_settings_form() {
   elysia_cron_initialize();
 
   $form = array();
+  $config = config('elysia_cron.settings');
 
   $form['prefix_1'] = array(
     '#type' => 'fieldset',
@@ -287,13 +288,13 @@ EOT
   $form['main']['elysia_cron_disabled'] = array(
     '#title' => t('Global disable'),
     '#type' => 'checkbox',
-    '#default_value' => variable_get('elysia_cron_disabled', FALSE),
+    '#default_value' => $config->get('disabled'),
   );
   $form['main']['elysia_cron_run_maintenance'] = array(
     '#title' => t('Run in maintenance'),
     '#description' => t('Allow to run cron in maintenance mode.'),
     '#type' => 'checkbox',
-    '#default_value' => variable_get('elysia_cron_run_maintenance', FALSE),
+    '#default_value' => $config->get('run_maintenance'),
   );
 
   $form['installation'] = array(
@@ -304,16 +305,16 @@ EOT
   );
 
   $options[0] = t('Never / Use external crontab');
-  $options += drupal_map_assoc(array(3600, 10800, 21600, 43200, 86400, 604800), 'format_interval');
+  $options += backdrop_map_assoc(array(3600, 10800, 21600, 43200, 86400, 604800), 'format_interval');
   $form['installation']['cron_safe_threshold'] = array(
     '#type' => 'select',
     '#title' => t("Run cron on visitor's requests, every"),
-    '#default_value' => variable_get('cron_safe_threshold', DRUPAL_CRON_DEFAULT_THRESHOLD),
-    '#description' => t('Setting a time here will enable the "poormanscron" method, which runs the Drupal cron operation using normal browser/page requests instead of having to set up a crontab to request the cron.php script. This approach requires that your site gets regular traffic/visitors in order to trigger the cron request.')
+    '#default_value' => config_get('system.core', 'cron_safe_threshold'),
+    '#description' => t('Setting a time here will enable the "poormanscron" method, which runs the Backdrop cron operation using normal browser/page requests instead of having to set up a crontab to request the cron.php script. This approach requires that your site gets regular traffic/visitors in order to trigger the cron request.')
     . '<br>'
     . t("This way is fine if you don't need a great control over job starting times and execution frequency.")
     . '<br />'
-    . t('If you need fine-grained control over cron timings use the crontab method, as <a href="!cron_url">described in Drupal installation guide</a>.', array('!cron_url' => url('http://drupal.org/cron')))
+    . t('If you need fine-grained control over cron timings use the crontab method, as <a href="!cron_url">described in Backdrop installation guide</a>.', array('!cron_url' => url('http://drupal.org/cron')))
     . '<br />'
     . t("If you have a very large site, or you need to execute some jobs very often (more than once an hour) refer to Elysia cron's INSTALL.TXT to improve main cron setup."),
     '#options' => $options,
@@ -323,13 +324,13 @@ EOT
     '#title' => t('Show the number of items in queues'),
     '#description' => t('Some queue backends may have performance issue related with counting items in queue. If you faced with it, just disable this option.'),
     '#type' => 'checkbox',
-    '#default_value' => variable_get('elysia_cron_queue_show_count', TRUE),
+    '#default_value' => $config->get('queue_show_count'),
   );
 
   $form['installation']['cron_key'] = array(
     '#title' => t('Cron key'),
     '#type' => 'textfield',
-    '#default_value' => variable_get('cron_key'),
+    '#default_value' => state_get('cron_key'),
     '#description' => t("This is used to avoid external cron calling. If you set this cron will by accessible only by calling <em>http://site/cron.php?cron_key=XXX</em>, so you'll need to modify system crontab to support this (Logged users with <em>execute elysia_cron</em> permission avoid this check).
     <br>If you left this field empty, you can run cron without cron_key parameter, like this <em>http://site/cron.php</em>, but it <b>HIGHLY NOT RECOMMENDED</b>."),
   );
@@ -337,14 +338,14 @@ EOT
   $form['installation']['elysia_cron_allowed_hosts'] = array(
     '#title' => t('Allowed hosts'),
     '#type' => 'textfield',
-    '#default_value' => variable_get('elysia_cron_allowed_hosts', ''),
+    '#default_value' => $config->get('allowed_hosts'),
     '#description' => t('Insert a list of ip addresses separated by , that can run cron.php (Logged user with [execute elysia_cron] permission avoid this check).'),
   );
 
   $form['installation']['elysia_cron_default_rule'] = array(
     '#title' => t('Default schedule rule'),
     '#type' => 'textfield',
-    '#default_value' => variable_get('elysia_cron_default_rule', FALSE),
+    '#default_value' => $config->get('default_rule'),
     '#description' => t("If you don't specify a rule for a process, and if it has not a module specified one, this rule will apply"),
   );
 
@@ -352,7 +353,7 @@ EOT
     $form['installation']['elysia_cron_time_limit'] = array(
       '#title' => t('Time limit'),
       '#type' => 'textfield',
-      '#default_value' => variable_get('elysia_cron_time_limit', 240),
+      '#default_value' => $config->get('time_limit'),
       '#description' => t('Set the number of seconds a channel is allowed to run. If you have some jobs that needs more time to execute increase it or set to 0 to disable the limit (WARN: that way a stuck job will block the channel forever!).'),
     );
   }
@@ -360,14 +361,14 @@ EOT
   $form['installation']['elysia_cron_stuck_time'] = array(
     '#title' => t('Stuck time'),
     '#type' => 'textfield',
-    '#default_value' => variable_get('elysia_cron_stuck_time', 3600),
+    '#default_value' => $config->get('stuck_time'),
     '#description' => t('How many seconds the process should wait to consider the job as stuck (so the channel can run again)'),
   );
 
   $form['installation']['elysia_cron_debug_messages'] = array(
     '#title' => t('Debug'),
     '#type' => 'select',
-    '#default_value' => variable_get('elysia_cron_debug_messages', 0),
+    '#default_value' => $config->get('debug_messages'),
     '#options' => array(
       0 => t('Disabled'),
       1 => t('Enabled'),
@@ -376,7 +377,7 @@ EOT
   );
 
   $default_rules_human = '';
-  $default_rules = variable_get('elysia_cron_default_rules', _elysia_cron_default_rules());
+  $default_rules = $config->get('default_rules');
   foreach ($default_rules as $dk => $dr) {
     $default_rules_human .= $dr . ' = ' . $dk . PHP_EOL;
   }
@@ -400,7 +401,7 @@ EOT
     '#title' => t('Lapse interval (minutes)'),
     '#type' => 'textfield',
     '#size' => 20,
-    '#default_value' => variable_get('elysia_cron_alert_interval', 60),
+    '#default_value' => $config->get('alert_interval'),
     '#description' => t('Specify the number of minutes to allow to lapse before the cron ping page returns a 404 (page not found).'),
   );
 
@@ -408,12 +409,12 @@ EOT
     '#title' => t('Script'),
     '#type' => 'fieldset',
     '#collapsible' => TRUE,
-    '#collapsed' => !variable_get('elysia_cron_script', ''),
+    '#collapsed' => !$config->get('script'),
   );
   $form['elysia_cron_script_fieldset']['elysia_cron_script'] = array(
     '#type' => 'textarea',
     '#rows' => 20,
-    '#default_value' => variable_get('elysia_cron_script', ''),
+    '#default_value' => $config->get('script'),
     '#description' => t('You can specify new cron jobs or modify existing schedules by adding lines to the script.')
     . '<br />'
     . t('<b>Warning</b> All rules specified in the script will OVERRIDE single job settings and channel settings (sections below).'),
@@ -591,12 +592,12 @@ function theme_elysia_cron_settings_form(array &$variables) {
 
     $coutput .= '<tr><td colspan="6"><b>' . $form['single_job'][$c]['#title'] . '</b>' . (($d = $form['single_job'][$c]['#description']) && $d != '-' ? ' <i>(' . $d . ')</i>' : '') . '</td></tr>';
     $coutput .= '<tr>'
-      . '<td align="center">' . drupal_render($form['single_job'][$c]['_elysia_cron_job_disabled_' . $key]) . '</td>'
-      . '<td>' . drupal_render($form['single_job'][$c]['_elysia_cron_seljob_rule_' . $key]) . drupal_render($form['single_job'][$c]['_elysia_cron_job_rule_' . $key]) . '</td>'
-      . '<td>' . drupal_render($form['single_job'][$c]['_elysia_cron_job_weight_' . $key]) . '</td><td><small>' . $def_weight . '</small></td>'
-      . '<td>' . drupal_render($form['single_job'][$c]['_elysia_cron_job_channel_' . $key]) . '</td>'
+      . '<td align="center">' . backdrop_render($form['single_job'][$c]['_elysia_cron_job_disabled_' . $key]) . '</td>'
+      . '<td>' . backdrop_render($form['single_job'][$c]['_elysia_cron_seljob_rule_' . $key]) . backdrop_render($form['single_job'][$c]['_elysia_cron_job_rule_' . $key]) . '</td>'
+      . '<td>' . backdrop_render($form['single_job'][$c]['_elysia_cron_job_weight_' . $key]) . '</td><td><small>' . $def_weight . '</small></td>'
+      . '<td>' . backdrop_render($form['single_job'][$c]['_elysia_cron_job_channel_' . $key]) . '</td>'
       . '</tr>';
-    drupal_render($form['single_job'][$c]);
+    backdrop_render($form['single_job'][$c]);
   }
   $coutput .= '</table>';
 
@@ -622,16 +623,16 @@ function theme_elysia_cron_settings_form(array &$variables) {
 
     $coutput .= '<tr>'
       . '<td><b>' . $form['channels'][$c]['#title'] . '</b></td>'
-      . '<td>' . drupal_render($form['channels'][$c]['_elysia_cron_ch_disabled_' . $key]) . '</td>'
-      . '<td>' . drupal_render($form['channels'][$c]['_elysia_cron_ch_rule_' . $key]) . '</td>'
+      . '<td>' . backdrop_render($form['channels'][$c]['_elysia_cron_ch_disabled_' . $key]) . '</td>'
+      . '<td>' . backdrop_render($form['channels'][$c]['_elysia_cron_ch_rule_' . $key]) . '</td>'
       . '</tr>';
-    drupal_render($form['channels'][$c]);
+    backdrop_render($form['channels'][$c]);
   }
   $coutput .= '</table>';
 
   $form['channels']['#children'] = $coutput;
 
-  return $output . drupal_render_children($form);
+  return $output . backdrop_render_children($form);
 }
 
 /**
@@ -689,6 +690,7 @@ function elysia_cron_settings_form_validate(array $form, array &$form_state) {
  *   Filled form_state array with input values.
  */
 function elysia_cron_settings_form_submit(array $form, array &$form_state) {
+  $config = config('elysia_cron.settings');
   $form_values = $form_state['values'];
 
   $op = isset($form_values['op']) ? $form_values['op'] : '';
@@ -704,22 +706,24 @@ function elysia_cron_settings_form_submit(array $form, array &$form_state) {
       $elysia_cron_default_rules[trim($rr[1])] = trim($rr[0]);
     }
   }
-  variable_set('elysia_cron_default_rules', $elysia_cron_default_rules);
+  $config->set('default_rules', $elysia_cron_default_rules);
+  $config->set('disabled', $form_values['elysia_cron_disabled']);
+  $config->set('run_maintenance', $form_values['elysia_cron_run_maintenance']);
+  $config->set('queue_show_count', $form_values['elysia_cron_queue_show_count']);
+  $config->set('allowed_hosts', $form_values['elysia_cron_allowed_hosts']);
+  $config->set('time_limit', $form_values['elysia_cron_time_limit']);
+  $config->set('stuck_time', $form_values['elysia_cron_stuck_time']);
+  $config->set('debug_messages', $form_values['elysia_cron_debug_messages']);
+  $config->set('default_rule', $form_values['elysia_cron_default_rule']);
+  $config->set('alert_interval', $form_values['elysia_cron_alert_interval']);
+  $config->set('script', $form_values['elysia_cron_script']);
+  $config->save();
+  config_set('system.core','cron_safe_threshold', $form_values['cron_safe_threshold']);
+  state_set('cron_key', $form_values['cron_key']); 
 
   foreach ($form_values as $key => $value) {
     $value = trim($value);
-    if (!preg_match('/^_elysia_cron_([^_]+_[^_]+)_(.*)$/', $key, $r)) {
-      if ($op == t('Reset to defaults') || ($key != 'cron_safe_threshold' && !$value)) {
-        variable_del($key);
-      }
-      elseif ($key != 'elysia_cron_default_rules') {
-        if (is_array($value) && isset($form_values['array_filter'])) {
-          $value = array_keys(array_filter($value));
-        }
-        variable_set($key, $value);
-      }
-    }
-    else {
+    if (preg_match('/^_elysia_cron_([^_]+_[^_]+)_(.*)$/', $key, $r)) {
       $nullvalue = $r[1] != 'job_weight' ? !$value : !$value && $value !== '0';
 
       if ($op == t('Reset to defaults') || $nullvalue) {
@@ -792,8 +796,10 @@ function elysia_cron_settings_form_submit(array $form, array &$form_state) {
 
     }
   }
-
   if ($op == t('Reset to defaults')) {
+    // Pull in default config if resetting to defaults
+    $config->delete();
+    config_install_default_config('elysia_cron');
     elysia_cron_message('The configuration options have been reset to their default values.');
   }
   else {
@@ -850,7 +856,7 @@ function elysia_cron_run_form_submit(array $form, array &$form_state) {
     elysia_cron_error('Cron run failed.');
   }
 
-  drupal_goto('admin/config/system/cron');
+  backdrop_goto('admin/config/system/cron');
 }
 
 /**
@@ -862,13 +868,13 @@ function elysia_cron_run_form_submit(array $form, array &$form_state) {
 function elysia_cron_execute_page($job = '') {
   if (!$job) {
     elysia_cron_error('No job specified');
-    drupal_goto('admin/config/system/cron');
+    backdrop_goto('admin/config/system/cron');
   }
 
   // Run also if disabled or not ready (but not if it's already running).
   elysia_cron_run_job($job, TRUE, TRUE, FALSE);
 
-  drupal_goto('admin/config/system/cron');
+  backdrop_goto('admin/config/system/cron');
 }
 
 /**
@@ -907,5 +913,5 @@ function elysia_cron_reset_statistics_form_submit(array $form, array &$form_stat
   elysia_cron_reset_stats();
 
   elysia_cron_message('Reset done.');
-  drupal_goto('admin/config/system/cron/maintenance');
+  backdrop_goto('admin/config/system/cron/maintenance');
 }

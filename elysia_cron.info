@@ -1,5 +1,6 @@
 name = "Elysia Cron"
 description = "Extended cron support with crontab-like scheduling and other features."
-core = 7.x
+backdrop = 1.x
+type = module
 
 configure = admin/config/system/cron

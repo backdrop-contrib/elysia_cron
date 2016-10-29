@@ -1,13 +1,13 @@
 ELYSIA_CRON
+===========
 by Eric Berdondini (gotheric)
 <eric@void.it>
 
 For installation instructions read INSTALL.TXT
 For module developers API documetation read API.TXT
 
------------------------------------------------------------------------------
 FEATURES
------------------------------------------------------------------------------
+--------
 
 Elysia Cron extends Drupal standard cron, allowing a fine grain control over
 each task and several ways to add custom cron jobs to your site.
@@ -47,9 +47,8 @@ It also can be used in a Drupal install profile.
 - CTools support for exports/backup of task settings.
 - Features support.
 
------------------------------------------------------------------------------
 USAGE EXAMPLES
------------------------------------------------------------------------------
+--------------
 
 Elysia cron is usually used in large sites that needs performance optimization.
 
@@ -84,9 +83,8 @@ Elysia cron is usually used in large sites that needs performance optimization.
   use extended logging, see at each cron timings and disable task to track down
   the problem.
 
------------------------------------------------------------------------------
 CHANNELS
------------------------------------------------------------------------------
+--------
 
 Channels are groups of tasks. Each channel is a "parallel line" of execution
 (= multiple channels can be executed simultaneously).
@@ -102,36 +100,10 @@ when the other one is running it will be checked once a minute).
 It you have 10 channels there will be a check every 10 minutes... if you have
 a job that should be executed every 5 minutes it won't do so!
 
------------------------------------------------------------------------------
-EXPORT VIA CTOOLS/FEATURES MODULE
------------------------------------------------------------------------------
-
-With 2.0 version of Elysia Cron you can use "Bulk Export" functionality of
-"Chaos Tools Suite" to export cron settings.
-To use it simply enable all modules, go to Structure > Bulk Exporter and
-select the tasks you want to export settings. You can also select all
-"elysia_cron" prefixed variables to export global options.
-Than generate the module.
-
-The generated code will set the new defaults of elysia cron settings. This way
-you can simply enable it to use them, but you are free to override them in
-the future using the normal settings page.
-Note that if you want to delete all overrides, and return to exported settings,
-you should do a "reset to defaults" from elysia cron settings page.
-
-You can also use "Features" module to create a Feature module will the settings
-you need.
-Note that if you want to delete the overridden settings it's preferable to use
-the "reset to defaults" elysia cron's button.
-You can use the "Revert components" Features's button, but this will reset also
-all cron statistics (if you are not interested in them you can freely use that
-button).
-
------------------------------------------------------------------------------
 DRUSH SUPPORT
------------------------------------------------------------------------------
+-------------
 
-Elysia Cron 2.0 adds a simple support for Drush module.
+Elysia Cron 2.0 adds a simple support for Drush module. (Note: not currently ported to Backdrop)
 
 Run all cron tasks in all active modules for specified site using elysia cron
 system. This replaces the standard "core-cron" drush handler.
@@ -160,12 +132,11 @@ Options:
  --quiet                                   suppress all output
  --verbose                                 enable extended output
 
------------------------------------------------------------------------------
 RULES AND SCRIPT SYNTAX
------------------------------------------------------------------------------
+-----------------------
 
 1. FIELDS ORDER
----------------------------------
+---------------
 
  +---------------- minute (0 - 59)
  |  +------------- hour (0 - 23)
@@ -189,7 +160,7 @@ of week" field (5) must match the current day (even though the other of the two
 fields need not match the current day).
 
 2. FIELDS OPERATOR
----------------------------------
+------------------
 
 There are several ways of specifying multiple date/time values in a field:
 
@@ -204,7 +175,7 @@ There are several ways of specifying multiple date/time values in a field:
   "0,3,6,9,12,15,18,21".
 
 3. EXAMPLES
----------------------------------
+-----------
 
  */15 * * * : Execute job every 15 minutes
  0 2,14 * * *: Execute job every day at 2:00 and 14:00
@@ -213,7 +184,7 @@ There are several ways of specifying multiple date/time values in a field:
  at every monday.
 
 4. SCRIPTS
----------------------------------
+----------
 
 You can use the script section to easily create new jobs (by calling a php
 function) or to change the scheduling of an existing job.
@@ -239,7 +210,7 @@ Remember that script OVERRIDES all settings on single jobs sections or channel
 sections of the configuration
 
 5. EXAMPLE OF SCRIPT
----------------------------------
+--------------------
 
 # Search indexing every 2 hours (i'm setting this as the job description)
 0 */2 * * * search_cron
@@ -260,9 +231,8 @@ sections of the configuration
 # Send daily summary
 0 1 * * *  send_summary_mail('test@test.com', false);
 
------------------------------------------------------------------------------
 CREDITS
------------------------------------------------------------------------------
+-------
 
 Elysia cron is a part of the Elysia project (but could be used stand alone
 with no limitation).
@@ -270,3 +240,5 @@ with no limitation).
 Developing is sponsored by :
 Void Labs s.n.c
 http://www.void.it
+
+Ported to Backdrop CMS by Herb v/d Dool

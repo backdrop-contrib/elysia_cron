@@ -7,7 +7,17 @@
 
 require_once 'elysia_cron_scheduler.inc';
 require_once 'elysia_cron.admin.inc';
-require_once 'elysia_cron.ctools.inc';
+
+/**
+ * Implements hook_config_info().
+ */
+function elysia_cron_config_info() {
+  $prefixes['elysia_cron.settings'] = array(
+    'label' => t('Elysia Cron settings'),
+    'group' => t('Configuration'),
+  );
+  return $prefixes;
+}
 
 /**
  * Implements hook_menu().
@@ -28,7 +38,7 @@ function elysia_cron_menu() {
   $items['admin/config/system/cron/settings'] = array(
     'type' => MENU_LOCAL_TASK,
     'title' => 'Settings',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('elysia_cron_settings_form'),
     'access callback' => 'elysia_cron_access',
     'access arguments' => array('administer elysia_cron'),
@@ -37,7 +47,7 @@ function elysia_cron_menu() {
   $items['admin/config/system/cron/maintenance'] = array(
     'type' => MENU_LOCAL_TASK,
     'title' => 'Maintenance',
-    'page callback' => 'drupal_get_form',
+    'page callback' => 'backdrop_get_form',
     'page arguments' => array('elysia_cron_reset_statistics_form'),
     'access callback' => 'elysia_cron_access',
     'access arguments' => array('administer elysia_cron'),
@@ -136,8 +146,8 @@ function elysia_cron_exit() {
 /**
  * Implements hook_cron().
  *
- * Hook cron is invoked only by standard drupal cron.
- * It's used to replace drupal cron.
+ * Hook cron is invoked only by standard backdrop cron.
+ * It's used to replace backdrop cron.
  */
 function elysia_cron_cron() {
   global $_elysia_cron_exit_phase, $_elysia_cron_drush;
@@ -147,9 +157,9 @@ function elysia_cron_cron() {
     elysia_cron_drush_invoke(TRUE);
   }
 
-  // First cron run is executed in standard drupal way.
+  // First cron run is executed in standard backdrop way.
   // This is to enable the use of install profiles.
-  if (variable_get('cron_last', 0) <= variable_get('install_time', 0)) {
+  if (state_get('cron_last', 0) <= state_get('install_time', 0)) {
     return;
   }
   // If the path is 'admin/*', or if the user is not anonymous,
@@ -171,17 +181,17 @@ function elysia_cron_cron() {
     // This invalidates variable cache, but it's a manual execution,
     // it should be not a great performance problem.
     if (empty($_elysia_cron_drush)) {
-      variable_set('cron_last', time());
+      state_set('cron_last', time());
     }
 
-    drupal_goto('admin/reports/status');
+    backdrop_goto('admin/reports/status');
   }
 
   // If we are in "poormanscron" mode it's better to force setting of cron_last.
   // This invalidates variable cache, but is needed for right execution check.
   // @see system_run_automated_cron() in system.module
   if (!empty($_elysia_cron_exit_phase)) {
-    variable_set('cron_last', time());
+    state_set('cron_last', time());
   }
 
   exit();
@@ -218,109 +228,6 @@ function elysia_cron_help($section, $arg = FALSE) {
   }
 }
 
-// Variables managed by _ec_variable method,
-// because are setted during cron execution handling
-// (with standard variable_set this will invalidate variable
-// cache in EVERY cron clock).
-$GLOBALS['_ec_variables_allowed'] = array(
-  'elysia_cron_semaphore',
-  'elysia_cron_last_run',
-  'elysia_cron_last_channel',
-  'cron_semaphore',
-  'cron_last',
-);
-
-/**
- * Initialise global variables.
- */
-function _ec_variable_init() {
-  global $_ec_variables, $_ec_variables_allowed;
-  $_ec_variables = array();
-  $_ec_variables = array_map('unserialize', db_query("SELECT name, value FROM {variable} where name like '" . implode("' or name like '", $_ec_variables_allowed) . "'")->fetchAllKeyed());
-}
-
-/**
- * A substitute for variable_get to avoid cache management.
- *
- * Use ONLY for variables set during cron execution:
- * elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_channel,
- * cron_semaphore, cron_last
- * WARN_UPGRADE.
- */
-function _ec_variable_get($name, $default) {
-  global $_ec_variables, $_ec_variables_allowed;
-  if (!in_array($name, $_ec_variables_allowed)) {
-    elysia_cron_error('Wrong variable passed to _ec_variable_get: !var', array('!var' => $name), TRUE);
-    return variable_get($name, $default);
-  }
-
-  if (!is_array($_ec_variables)) {
-    _ec_variable_init();
-  }
-
-  // If there is a $GLOBALS['original_conf'] = $conf; at the end of settings.php
-  // i consider it.
-  global $_original_conf;
-
-  if (isset($_original_conf[$name])) {
-    return $_original_conf[$name];
-  }
-  if (isset($_ec_variables[$name])) {
-    return $_ec_variables[$name];
-  }
-
-  return $default;
-}
-
-/**
- * A substitute for variable_set to avoid cache management.
- *
- * Use ONLY for variables set during cron execution:
- * elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_channel,
- * cron_semaphore, cron_last.
- * WARN_UPGRADE.
- */
-function _ec_variable_set($name, $value) {
-  global $_ec_variables, $_ec_variables_allowed;
-  if (!in_array($name, $_ec_variables_allowed)) {
-    elysia_cron_error('Wrong variable passed to _ec_variable_set: !var', array('!var' => $name), TRUE);
-    variable_set($name, $value);
-  }
-
-  if (!is_array($_ec_variables)) {
-    _ec_variable_init();
-  }
-
-  db_merge('variable')->key(array('name' => $name))->fields(array('value' => serialize($value)))->execute();
-
-  $_ec_variables[$name] = $value;
-}
-
-/**
- * A substitute for variable_del to avoid cache management.
- *
- * Use ONLY for variables set during cron execution:
- * elysia_cron_semaphore, elysia_cron_last_run, elysia_cron_last_channel,
- * cron_semaphore, cron_last
- * WARN_UPGRADE.
- */
-function _ec_variable_del($name) {
-  global $_ec_variables, $_ec_variables_allowed;
-  if (!in_array($name, $_ec_variables_allowed)) {
-    elysia_cron_error('Wrong variable passed to _ec_variable_del: !var', array('!var' => $name), TRUE);
-    variable_del($name);
-    return;
-  }
-
-  if (!is_array($_ec_variables)) {
-    _ec_variable_init();
-  }
-
-  db_delete('variable')->condition('name', $name)->execute();
-
-  unset($_ec_variables[$name]);
-}
-
 function _ec_get_name($name) {
   $maxlen = 120;
   if (strlen($name) < $maxlen) {
@@ -347,7 +254,7 @@ function elysia_cron_get($name, $channel = FALSE, $key = FALSE, $default = FALSE
   static $elysia_cron_defaults;
 
   if (!isset($elysia_cron_defaults)) {
-    $elysia_cron_defaults = function_exists('elysia_cron_get_ctools_defaults') ? elysia_cron_get_ctools_defaults() : array();
+    $elysia_cron_defaults = array();
   }
 
   if ($channel) {
@@ -841,11 +748,11 @@ function elysia_cron_set_job_stats(
 }
 
 function elysia_cron_last_channel() {
-  return _ec_variable_get('elysia_cron_last_channel', '');
+  return state_get('elysia_cron_last_channel', '');
 }
 
 function elysia_cron_set_last_channel($channel) {
-  _ec_variable_set('elysia_cron_last_channel', $channel);
+  state_set('elysia_cron_last_channel', $channel);
 }
 
 function elysia_cron_reset_stats() {
@@ -888,7 +795,7 @@ function elysia_cron_reset_stats() {
 function elysia_cron_message($message, $vars = array()) {
   global $_elysia_cron_drush;
   if (empty($_elysia_cron_drush)) {
-    drupal_set_message(t($message, $vars));
+    backdrop_set_message(t($message, $vars));
   }
   else {
     drush_log(strip_tags(dt($message, $vars)), 'ok');
@@ -903,7 +810,7 @@ function elysia_cron_message($message, $vars = array()) {
 function elysia_cron_error($message, $vars = array(), $skip_user_message = FALSE) {
   global $_elysia_cron_drush;
   if (empty($_elysia_cron_drush) && !$skip_user_message) {
-    drupal_set_message(t($message, $vars), 'error');
+    backdrop_set_message(t($message, $vars), 'error');
   }
   /* @todo remove following code if not necessary.
   if (!empty($_elysia_cron_drush)) {
@@ -919,7 +826,7 @@ function elysia_cron_error($message, $vars = array(), $skip_user_message = FALSE
  */
 function elysia_cron_debug($message, $vars = array(), $type = WATCHDOG_NOTICE) {
   global $_elysia_cron_drush;
-  if ($type < WATCHDOG_NOTICE || variable_get('elysia_cron_debug_messages', 0)) {
+  if ($type < WATCHDOG_NOTICE || config_get('elysia_cron.settings', 'debug_messages')) {
     watchdog('cron', $message, $vars, $type);
   }
   if (!empty($_elysia_cron_drush) && $_elysia_cron_drush >= 2 && ($type >= WATCHDOG_NOTICE || !drush_get_option("verbose", FALSE))) {
@@ -1047,8 +954,8 @@ function elysia_cron_module_jobs() {
       }
     }
 
-    if (function_exists('drupal_alter')) {
-      drupal_alter('cron', $jobs);
+    if (function_exists('backdrop_alter')) {
+      backdrop_alter('cron', $jobs);
     }
   }
 
@@ -1068,7 +975,7 @@ function elysia_cron_initialize($skipscript = FALSE) {
 
       $defrule = !empty($jobpars['rule']) ? $jobpars['rule'] : elysia_cron_get_channel_rule($channel);
       if (!$defrule) {
-        $defrule = variable_get('elysia_cron_default_rule', '0 * * * *');
+        $defrule = config_get('elysia_cron.settings', 'default_rule');
       }
 
       $defweight = !empty($jobpars['weight']) ? $jobpars['weight'] : 0;
@@ -1088,7 +995,7 @@ function elysia_cron_initialize($skipscript = FALSE) {
       ) + $jobpars;
     }
     if (!$skipscript) {
-      $script = variable_get('elysia_cron_script', FALSE);
+      $script = config_get('elysia_cron.settings', 'script');
       if ($script) {
         elysia_cron_decode_script($script);
       }
@@ -1140,17 +1047,17 @@ function elysia_cron_prepare_run($manual_run, $start = TRUE) {
 
     // Try to allocate enough time to run all the hook_cron implementations.
     if (!ini_get('safe_mode') && _elysia_cron_function_available('set_time_limit')) {
-      set_time_limit(variable_get('elysia_cron_time_limit', 240));
+      set_time_limit(config_get('elysia_cron.settings', 'time_limit'));
     }
 
     // Prevent session information from being saved while cron is running.
-    drupal_save_session(FALSE);
+    backdrop_save_session(FALSE);
 
     // Force the current user to anonymous to ensure consistent permissions on
     // cron runs (only if run by interface).
     if ($manual_run) {
       $original_user = $GLOBALS['user'];
-      $GLOBALS['user'] = drupal_anonymous_user();
+      $GLOBALS['user'] = backdrop_anonymous_user();
     }
 
   }
@@ -1158,8 +1065,8 @@ function elysia_cron_prepare_run($manual_run, $start = TRUE) {
     if ($manual_run) {
       // Restore the user.
       $GLOBALS['user'] = $original_user;
-      /*if (EC_DRUPAL_VERSION >= 7) {
-        drupal_save_session(TRUE);
+      /*if (EC_BACKDROP_VERSION >= 7) {
+        backdrop_save_session(TRUE);
       }*/
     }
   }
@@ -1216,7 +1123,7 @@ function elysia_cron_build_semaphore_name($channel) {
     $semaphore_name .= ':' . $channel;
   }
 
-  return drupal_substr($semaphore_name, 0, 255);
+  return backdrop_substr($semaphore_name, 0, 255);
 }
 
 /**
@@ -1236,7 +1143,7 @@ function elysia_cron_run($manual_run = FALSE, $ignore_disable = FALSE, $ignore_t
   global $_elysia_cron_exit_phase;
 
   // If DISABLED block the execution.
-  if (!$ignore_disable && variable_get('elysia_cron_disabled', FALSE)) {
+  if (!$ignore_disable && config_get('elysia_cron.settings', 'disabled')) {
     elysia_cron_debug('Cron globally disabled, skipping run');
     return;
   }
@@ -1247,13 +1154,13 @@ function elysia_cron_run($manual_run = FALSE, $ignore_disable = FALSE, $ignore_t
   }
   elseif (!$manual_run) {
     // Check for CRON_KEY or ALLOWED_HOSTS.
-    if (!drupal_is_cli()) {
-      $cron_key = variable_get('cron_key', '');
+    if (!backdrop_is_cli()) {
+      $cron_key = state_get('cron_key');
       if ($cron_key && (empty($_GET['cron_key']) || $_GET['cron_key'] != $cron_key)) {
         elysia_cron_debug('Cron key mismatch, skipping run');
         return;
       }
-      $allowed_hosts = variable_get('elysia_cron_allowed_hosts', FALSE);
+      $allowed_hosts = config_get('elysia_cron.settings', 'allowed_hosts');
       if ($allowed_hosts && !in_array(ip_address(), explode(',', $allowed_hosts))) {
         elysia_cron_debug('Cron ip address mismatch, skipping run');
         return;
@@ -1267,8 +1174,8 @@ function elysia_cron_run($manual_run = FALSE, $ignore_disable = FALSE, $ignore_t
 
   elysia_cron_prepare_run($manual_run);
 
-  _ec_variable_set('elysia_cron_last_run', time());
-  _ec_variable_set('cron_last', time());
+  state_set('elysia_cron_last_run', time());
+  state_set('cron_last', time());
 
   if ($execute = elysia_cron_lock_env()) {
     elysia_cron_initialize();
@@ -1445,7 +1352,7 @@ function elysia_cron_internal_execute_job($job) {
 
   try {
     if (!empty($_elysia_cron_settings[$job]['file'])) {
-      include_once((!empty($_elysia_cron_settings[$job]['file path']) ? $_elysia_cron_settings[$job]['file path'] : drupal_get_path('module', $_elysia_cron_settings[$job]['module'])) . DIRECTORY_SEPARATOR . $_elysia_cron_settings[$job]['file']);
+      include_once((!empty($_elysia_cron_settings[$job]['file path']) ? $_elysia_cron_settings[$job]['file path'] : backdrop_get_path('module', $_elysia_cron_settings[$job]['module'])) . DIRECTORY_SEPARATOR . $_elysia_cron_settings[$job]['file']);
     }
     if (!empty($_elysia_cron_settings[$job]['expression'])) {
       eval($_elysia_cron_settings[$job]['expression']);
@@ -1485,7 +1392,7 @@ function elysia_cron_check_run_channel($channel, $ignore_disable = FALSE, $ignor
   global $_elysia_cron_settings_by_channel;
 
   $jobs = FALSE;
-  $stuck_time = variable_get('elysia_cron_stuck_time', 3600);
+  $stuck_time = config_get('elysia_cron.settings', 'stuck_time');
   $sem = elysia_cron_is_channel_running($channel);
   if ($sem && (time() - $sem > $stuck_time)) {
     elysia_cron_set_channel_running($channel, 0);
@@ -1502,7 +1409,7 @@ function elysia_cron_check_run_channel($channel, $ignore_disable = FALSE, $ignor
 function elysia_cron_check_run_job($job) {
   $job_running = FALSE;
   if (elysia_cron_is_job_running($job)) {
-    if (time() - elysia_cron_get_job_last_run($job, 0) > variable_get('elysia_cron_stuck_time', 3600)) {
+    if (time() - elysia_cron_get_job_last_run($job, 0) > config_get('elysia_cron.settings', 'stuck_time')) {
       elysia_cron_warning('Job %job is already running, but is probably stuck, so i consider it as terminated', array('%job' => $job));
     }
     else {
@@ -1598,7 +1505,7 @@ function elysia_cron_internal_execute_channel_completed() {
   global $_elysia_cron_current_channel, $_cron_completed_time;
 
   // Record cron time.
-  _ec_variable_set('cron_last', time());
+  state_set('cron_last', time());
 
   elysia_cron_debug('Cron channel %channel run completed.', array('%channel' => $_elysia_cron_current_channel));
 
@@ -1740,7 +1647,7 @@ function theme_elysia_cron_description($variables) {
       return 'Process trackback ping queue';
 
     case 'update_status_cron':
-      return 'Checks for drupal module updates (Note: own frequency check ignore cron rules)';
+      return 'Checks for backdrop module updates (Note: own frequency check ignore cron rules)';
 
     case 'user_karma_cron':
       return 'User karma expiration / rebuild (Note: own frequency check ignore cron rules)';
@@ -1779,7 +1686,7 @@ function theme_elysia_cron_description($variables) {
       return 'Triggers cron actions';
 
     case 'update_cron':
-      return 'Checks for available updates of Drupal core, contributed modules and themes';
+      return 'Checks for available updates of Backdrop core, contributed modules and themes';
 
     case 'search_api_cron':
       return 'Will index items for each enabled index.';
@@ -1806,12 +1713,12 @@ function theme_elysia_cron_description($variables) {
  * Page callback for ping page.  Throws 404 if cron hasn't been called within configured time period.
  */
 function elysia_cron_ping_page() {
-  $last_run = _ec_variable_get('elysia_cron_last_run', 0);
+  $last_run = state_get('elysia_cron_last_run', 0);
   $diff = time() - $last_run;
-  $max_interval = variable_get('elysia_cron_alert_interval', 60) * 60;
+  $max_interval = config_get('elysia_cron.settings', 'alert_interval') * 60;
 
   if ($diff > $max_interval) {
-    return drupal_not_found();
+    return backdrop_not_found();
   }
   else {
     $aoutput = array();
@@ -1824,15 +1731,15 @@ function elysia_cron_ping_page() {
 }
 
 /*******************************************************************************
- * DRUPAL QUEUE SUPPORT
- * ONLY FOR D7
+ * BACKDROP QUEUE SUPPORT
  ******************************************************************************/
 
 function elysia_cron_cronapi($op, $job = FALSE) {
   $items = array();
+  $config = config('elysia_cron.settings');
 
   $queues = module_invoke_all('cron_queue_info');
-  drupal_alter('cron_queue_info', $queues);
+  backdrop_alter('cron_queue_info', $queues);
 
   foreach ($queues as $queue_name => $info) {
     if (!empty($info['skip on cron'])) {
@@ -1842,11 +1749,11 @@ function elysia_cron_cronapi($op, $job = FALSE) {
 
     // Make sure every queue exists. There is no harm in trying to recreate an
     // existing queue.
-    $queue = DrupalQueue::get($queue_name);
+    $queue = BackdropQueue::get($queue_name);
     $queue->createQueue();
 
     // Some queue backends may have performance issues with counting items.
-    if (variable_get('elysia_cron_queue_show_count', TRUE)) {
+    if ($config->get('queue_show_count')) {
       $queue_description = $queue_name . ' queue processing (Items count: <strong>' . $queue->numberOfItems() . '</strong>, worker max duration: <strong>' . (isset($info['time']) ? $info['time'] . 's' : t('unspecified') . ' (15s)') . '</strong>)';
     }
     else {
@@ -1855,8 +1762,8 @@ function elysia_cron_cronapi($op, $job = FALSE) {
 
     $items['queue_' . $queue_name] = array(
       'description' => $queue_description,
-      'rule' => variable_get('elysia_cron_queue_default_rule', FALSE),
-      'weight' => variable_get('elysia_cron_queue_default_weight', 100),
+      'rule' => $config->get('queue_default_rule'),
+      'weight' => $config->get('queue_default_weight'),
       'callback' => 'elysia_cron_queue_exec',
       'arguments' => array($queue_name, $info),
     );
@@ -1868,7 +1775,7 @@ function elysia_cron_cronapi($op, $job = FALSE) {
 function elysia_cron_queue_exec($queue_name, $info) {
   $function = $info['worker callback'];
   $end = time() + (isset($info['time']) ? $info['time'] : 15);
-  $queue = DrupalQueue::get($queue_name);
+  $queue = BackdropQueue::get($queue_name);
   while (time() < $end && ($item = $queue->claimItem())) {
     try {
       $function($item->data);
