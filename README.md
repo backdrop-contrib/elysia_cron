@@ -1,14 +1,9 @@
 Elysia Cron
 ===========
-
-
-For installation instructions read INSTALL.TXT
-For module developers API documetation read API.TXT
+Elysia Cron extends Backdrop CMS standard cron, allowing a fine grain control over each task and several ways to add custom cron jobs to your site.
 
 Features
 --------
-
-Elysia Cron extends Backdrop CMS standard cron, allowing a fine grain control over each task and several ways to add custom cron jobs to your site.
 
 - Set the timings and frequencies of each cron task (you can run some jobs every day at a specified hour, other only monthly and so on...). For each task you can simply choose between some frequently used options ("once a day", "once a month" ...), or use a powerful "linux crontab"-like syntax to set the accurate timings. You can even define your frequently used options to speed up site configuration.
 - Parallel execution of cron task: you can group jobs in channels and execute then simultaneously: so a task that takes a lot of time to execute won't block other tasks that need to be executed every 5 minutes...
@@ -23,6 +18,9 @@ Elysia Cron extends Backdrop CMS standard cron, allowing a fine grain control ov
 - Protection from external cron calling by cron_key or allowed host list.
 
 Elysia has no dependencies with contributed modules, and doesn't need to patch the core: it can be used in minimal Backdrop CMS installation with only core modules. It also can be used in a Backdrop CMS install profile.
+
+For installation instructions read INSTALL.TXT
+For module developers API documetation read API.TXT
 
 ###3rd party integration:
 
