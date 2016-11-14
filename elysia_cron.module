@@ -1039,8 +1039,8 @@ function elysia_cron_module_jobs() {
 
             $jobs[$job] = $jobs[$job] + array(
               'module' => $module,
-              'callback' => is_callable($job) ? $job : $function,
-              'arguments' => is_callable($job) ? array() : array('execute', $job),
+              'callback' => $job,
+              'arguments' => array(),
             );
           }
         }
@@ -1445,8 +1445,9 @@ function elysia_cron_internal_execute_job($job) {
 
   try {
     if (!empty($_elysia_cron_settings[$job]['file'])) {
-      include_once((!empty($_elysia_cron_settings[$job]['file path']) ? $_elysia_cron_settings[$job]['file path'] : drupal_get_path('module', $_elysia_cron_settings[$job]['module'])) . DIRECTORY_SEPARATOR . $_elysia_cron_settings[$job]['file']);
+      include_once !empty($_elysia_cron_settings[$job]['file path']) ? $_elysia_cron_settings[$job]['file path'] : drupal_get_path('module', $_elysia_cron_settings[$job]['module']) . DIRECTORY_SEPARATOR . $_elysia_cron_settings[$job]['file'];
     }
+
     if (!empty($_elysia_cron_settings[$job]['expression'])) {
       eval($_elysia_cron_settings[$job]['expression']);
     }
@@ -1454,7 +1455,15 @@ function elysia_cron_internal_execute_job($job) {
       call_user_func_array($_elysia_cron_settings[$job]['callback'], $_elysia_cron_settings[$job]['arguments']);
     }
     else {
-      elysia_cron_error('Execution of ' . $job . ' failed, can\'t find function!', array(), TRUE);
+      $function = $_elysia_cron_settings[$job]['module'] . '_cronapi';
+      $arguments = array('execute', $job);
+
+      if (is_callable($function)) {
+        call_user_func_array($function, $arguments);
+      }
+      else {
+        elysia_cron_error('Execution of ' . $job . ' failed, can\'t find function!', array(), TRUE);
+      }
     }
   }
   catch (Exception $e) {
