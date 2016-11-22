@@ -1447,7 +1447,9 @@ function elysia_cron_internal_execute_job($job) {
 
   try {
     if (!empty($_elysia_cron_settings[$job]['file'])) {
-      include_once !empty($_elysia_cron_settings[$job]['file path']) ? $_elysia_cron_settings[$job]['file path'] : drupal_get_path('module', $_elysia_cron_settings[$job]['module']) . DIRECTORY_SEPARATOR . $_elysia_cron_settings[$job]['file'];
+      $file_path = !empty($_elysia_cron_settings[$job]['file path']) ? $_elysia_cron_settings[$job]['file path'] : drupal_get_path('module', $_elysia_cron_settings[$job]['module']);
+      $file_path .= DIRECTORY_SEPARATOR . $_elysia_cron_settings[$job]['file'];
+      include_once $file_path;
     }
 
     if (!empty($_elysia_cron_settings[$job]['expression'])) {
