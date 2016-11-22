@@ -142,9 +142,11 @@ function elysia_cron_exit() {
 function elysia_cron_cron() {
   global $_elysia_cron_exit_phase, $_elysia_cron_drush;
 
-  // If invoked "core-cron" via drush i'll redirect to elysia-cron handler.
+  // If cron has been executed via "drush core-cron" or any other custom drush
+  // command then we run internal cron handler which is designed to handle
+  // cron executions from drush.
   if (function_exists('elysia_cron_drush_detect') && elysia_cron_drush_detect()) {
-    elysia_cron_drush_invoke(TRUE);
+    elysia_cron_drush_invoke();
   }
 
   // First cron run is executed in standard drupal way.
