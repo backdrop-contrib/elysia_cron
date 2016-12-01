@@ -123,6 +123,7 @@ function elysia_cron_permission() {
     'administer elysia_cron' => array(
       'title' => t('Administer elysia cron'),
       'description' => t('Perform changes to cron jobs timings, disable cron or single jobs and access cron execution statistics'),
+      'restrict access' => TRUE,
     ),
     'execute elysia_cron' => array(
       'title' => t('Execute elysia cron jobs'),
