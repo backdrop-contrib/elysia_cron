@@ -91,7 +91,16 @@ function drush_elysia_cron_run_wrapper($op = FALSE, $target = FALSE) {
   if (!$verbose) {
     $verbose = drush_get_option('elysia-cron-verbose', FALSE);
   }
-  $_elysia_cron_drush = $quiet ? 1 : !$verbose ? 2 : 3;
+
+  if ($quiet) {
+    $_elysia_cron_drush = 1;
+  }
+  elseif ($verbose) {
+    $_elysia_cron_drush = 3;
+  }
+  else {
+    $_elysia_cron_drush = 2;
+  }
 
   switch ($op) {
     case 'list':
