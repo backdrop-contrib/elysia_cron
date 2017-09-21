@@ -63,6 +63,7 @@ function elysia_cron_drush_command() {
       'quiet' => 'suppress all output',
       'verbose' => 'enable extended output',
       'elysia-cron-verbose' => 'enable extended output (the same as --verbose, but without enabling drush verbose mode)',
+      'force' => 'run channels/tasks even if it disabled/not ready for execution/already running',
       'ignore-disable' => 'run channels/tasks even if disabled',
       'ignore-time' => 'run channels/tasks even if not ready for execution',
       'ignore-running' => 'run channels/tasks even if already running',
@@ -149,13 +150,20 @@ function drush_elysia_cron_run_wrapper($op = FALSE, $target = FALSE) {
       break;
 
     case 'run':
+      // Collect options.
+      $force = drush_get_option('force', FALSE);
+
+      $ignore_disable = $force || drush_get_option('ignore-disable', FALSE);
+      $ignore_time = $force || drush_get_option('ignore-time', FALSE);
+      $ignore_running = $force || drush_get_option('ignore-running', FALSE);
+
       if (empty($target)) {
-        elysia_cron_run(FALSE, drush_get_option('ignore-disable', FALSE), drush_get_option('ignore-time', FALSE), drush_get_option('ignore-running', FALSE));
+        elysia_cron_run(FALSE, $ignore_disable, $ignore_time, $ignore_running);
       }
       elseif (strpos($target, '@') === 0) {
         elysia_cron_initialize();
         if (elysia_cron_channel_exists(substr($target, 1))) {
-          elysia_cron_run_channel(substr($target, 1), drush_get_option('ignore-disable', FALSE), drush_get_option('ignore-time', FALSE), drush_get_option('ignore-running', FALSE));
+          elysia_cron_run_channel(substr($target, 1), $ignore_disable, $ignore_time, $ignore_running);
         }
         else {
           drush_set_error('Channel ' . substr($target, 1) . ' does not exists');
@@ -164,7 +172,7 @@ function drush_elysia_cron_run_wrapper($op = FALSE, $target = FALSE) {
       else {
         elysia_cron_initialize();
         if (elysia_cron_job_exists($target)) {
-          elysia_cron_run_job($target, drush_get_option('ignore-disable', FALSE), drush_get_option('ignore-time', FALSE), drush_get_option('ignore-running', FALSE));
+          elysia_cron_run_job($target, $ignore_disable, $ignore_time, $ignore_running);
         }
         else {
           drush_set_error('Job ' . $target . ' does not exists');
