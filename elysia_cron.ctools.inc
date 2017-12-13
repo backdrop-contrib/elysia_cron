@@ -205,7 +205,7 @@ function elysia_cron_ctools_export_callback($object, $indent) {
   $schema = ctools_export_get_schema($table);
   $identifier = $schema['export']['identifier'];
 
-  $output = $indent . '$' . $identifier . ' = new ' . get_class($object) . ';' . ELYSIA_CRON_CTOOLS_LINEBREAK;
+  $output = $indent . '$' . $identifier . ' = new ' . get_class($object) . '();' . ELYSIA_CRON_CTOOLS_LINEBREAK;
 
   if ($schema['export']['can disable']) {
     $output .= $indent . '$' . $identifier . '->disabled = FALSE; /* Edit this to true to make a default ' . $identifier . ' disabled initially */' . ELYSIA_CRON_CTOOLS_LINEBREAK;
