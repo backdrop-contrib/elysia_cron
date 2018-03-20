@@ -72,6 +72,9 @@ function elysia_cron_menu_alter(&$items) {
     'access arguments' => array('view elysia_cron'),
     'file' => NULL,
   ) + $items['admin/config/system/cron'];
+
+  $items['admin/reports/status/run-cron']['page callback'] = 'elysia_cron_run';
+  $items['admin/reports/status/run-cron']['page arguments'] = array(TRUE);
 }
 
 /**
