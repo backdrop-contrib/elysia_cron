@@ -643,7 +643,7 @@ function theme_elysia_cron_settings_form(array &$variables) {
 
   $form['channels']['#children'] = $coutput;
 
-  return $output . drupal_render_children($form);
+  return drupal_render_children($form);
 }
 
 /**
