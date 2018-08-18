@@ -64,14 +64,12 @@ function elysia_cron_menu() {
  */
 function elysia_cron_menu_alter(&$items) {
   // Override default cron page.
-  $items['admin/config/system/cron'] = array(
-    'title' => 'Cron Settings',
-    'description' => 'View and manage cron table',
-    'page callback' => 'elysia_cron_admin_page',
-    'access callback' => 'elysia_cron_access',
-    'access arguments' => array('view elysia_cron'),
-    'file' => NULL,
-  ) + $items['admin/config/system/cron'];
+  $items['admin/config/system/cron']['title'] = 'Cron Settings';
+  $items['admin/config/system/cron']['description'] = 'View and manage cron table';
+  $items['admin/config/system/cron']['page callback'] = 'elysia_cron_admin_page';
+  $items['admin/config/system/cron']['access callback'] = 'elysia_cron_access';
+  $items['admin/config/system/cron']['access arguments'] = array('view elysia_cron');
+  $items['admin/config/system/cron']['file'] = NULL;
 
   $items['admin/reports/status/run-cron']['page callback'] = 'elysia_cron_run';
   $items['admin/reports/status/run-cron']['page arguments'] = array(TRUE);
