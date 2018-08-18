@@ -1145,7 +1145,7 @@ function elysia_cron_prepare_run($manual_run, $start = TRUE) {
 
     // Try to allocate enough time to run all the hook_cron implementations.
     if (!ini_get('safe_mode') && _elysia_cron_function_available('set_time_limit')) {
-      set_time_limit(variable_get('elysia_cron_time_limit', 240));
+      @set_time_limit(variable_get('elysia_cron_time_limit', 240));
     }
 
     // Prevent session information from being saved while cron is running.
