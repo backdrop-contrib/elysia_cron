@@ -189,7 +189,7 @@ function elysia_cron_cron() {
     variable_set('cron_last', time());
   }
 
-  exit();
+  drupal_exit();
 }
 
 /**
