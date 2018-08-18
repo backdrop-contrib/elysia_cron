@@ -9,8 +9,6 @@
  * Function for cron run schedule.
  */
 function elysia_cron_should_run($conf, $now = -1, $ignore_disable = FALSE, $ignore_time = FALSE) {
-  // What time SHOULD the job be executed last time.
-  $prev_rule_run = 0;
   if (!$ignore_disable && $conf['disabled']) {
     return FALSE;
   }
@@ -350,15 +348,15 @@ function test_elysia_cron_should_run() {
     'last_run' => mktime(23, 59, 0, 2, 29, 2008),
   ), mktime(23, 59, 0, 2, 6, 2009))));
   dprint("34." . (TRUE == elysia_cron_should_run(array(
-    'rule' => '59 23 *' . '/10 * *',
+    'rule' => '59 23 */10 * *',
     'last_run' => mktime(23, 58, 0, 1, 10, 2008),
   ), mktime(23, 59, 0, 1, 10, 2008))));
   dprint("35." . (FALSE == elysia_cron_should_run(array(
-    'rule' => '59 23 *' . '/10 * *',
+    'rule' => '59 23 */10 * *',
     'last_run' => mktime(23, 59, 0, 1, 10, 2008),
   ), mktime(23, 59, 0, 1, 11, 2008))));
   dprint("36." . (TRUE == elysia_cron_should_run(array(
-    'rule' => '59 23 *' . '/10 * *',
+    'rule' => '59 23 */10 * *',
     'last_run' => mktime(23, 59, 0, 1, 10, 2008),
   ), mktime(23, 59, 0, 1, 20, 2008))));
   dprint("37." . (TRUE == elysia_cron_should_run(array(
