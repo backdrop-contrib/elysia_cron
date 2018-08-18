@@ -144,6 +144,12 @@ function elysia_cron_exit() {
 function elysia_cron_cron() {
   global $_elysia_cron_exit_phase, $_elysia_cron_drush;
 
+  // First cron run is executed in standard drupal way.
+  // This is to enable the use of install profiles.
+  if (variable_get('cron_last', 0) <= variable_get('install_time', 0)) {
+    return;
+  }
+
   // If cron has been executed via "drush core-cron" or any other custom drush
   // command then we run internal cron handler which is designed to handle
   // cron executions from drush.
@@ -151,11 +157,6 @@ function elysia_cron_cron() {
     elysia_cron_drush_invoke();
   }
 
-  // First cron run is executed in standard drupal way.
-  // This is to enable the use of install profiles.
-  if (variable_get('cron_last', 0) <= variable_get('install_time', 0)) {
-    return;
-  }
   // If the path is 'admin/*', or if the user is not anonymous,
   // this is a manual cron run (probably by admin/logs/status),
   // but not if we are in the exit phase (= this a "poormanscron" run).
