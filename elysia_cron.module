@@ -240,8 +240,11 @@ $GLOBALS['_ec_variables_allowed'] = array(
  */
 function _ec_variable_init() {
   global $_ec_variables, $_ec_variables_allowed;
+
   $_ec_variables = array();
-  $_ec_variables = array_map('unserialize', db_query("SELECT name, value FROM {variable} where name like '" . implode("' or name like '", $_ec_variables_allowed) . "'")->fetchAllKeyed());
+  foreach ($_ec_variables_allowed as $name) {
+    $_ec_variables[$name] = variable_get($name);
+  }
 }
 
 /**
