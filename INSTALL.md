@@ -1,28 +1,19 @@
-UPGRADE A NEW VERSION
-----------------------
-
-If you are upgrading from an old version of elysia_cron you should simply 
-replace module files. You don't even need to execute the "update.php" drupal
-process: Elysia cron will detect the new version on its first run and updates
-itself automatically.
-
-
-INSTALLATION 
+INSTALLATION
 -------------
 
 For the basic install you only need to enable the module and Elysia Cron will be
 up and running.
 
 You can stop here if you don't need a great precision over task execution and
-you don't have to execute a task more often than once an hour.  
-For example, if you need only the "Once a day", "Once a week" or "Once a month" 
+you don't have to execute a task more often than once an hour.
+For example, if you need only the "Once a day", "Once a week" or "Once a month"
 schedule rules the basic install is fine.
 
 Instead, if you need:
 - to run some tasks more often than once an hour (eg: you have a function that
   should be executed every 5 minutes)
-- to execute a task at an exact time (eg:you must run a function at exactly 
-  "17:23") 
+- to execute a task at an exact time (eg:you must run a function at exactly
+  "17:23")
 ... you must follow Step B
 
 
@@ -31,35 +22,37 @@ STEP B: CHANGE SYSTEM CRONTAB (OPTIONAL)
 
 To get the full potential out of elysia cron and have the full control over you
 tasks a further step is needed: you need to configure the system crontab to
-execute drupal cron every minute.
+execute Backdrop cron every minute.
 
-To do this refer to the section "Configuring cron jobs" of drupal documentation:
+To do this refer to the section "Configuring cron jobs" of documentation:
 http://drupal.org/cron
 
-The only difference is that you should use the "* * * * *" rule part instead of
-"0 * * * *" or "45 * * * *" as described in the guide.
+The only difference is that you should use the "`* * * * *`" rule part instead of
+"`0 * * * *`" or "`45 * * * *`" as described in the guide.
 
 While you're editing the system crontab, it's also recommended to replace the
 "/cron.php" part with "/sites/all/modules/elysia_cron/cron.php" (if you have
 installed elysia_cron in "sites/all/modules" directory).
-This is an optional step (you can leave "/cron.php" if you want), doing it will 
-result in a better performance in bigger sites (elysia_cron's cron.php handles 
+This is an optional step (you can leave "/cron.php" if you want), doing it will
+result in a better performance in bigger sites (elysia_cron's cron.php handles
 cache in a better way).
 
-For example: 
-* * * * * wget -O - -q -t 1 http://www.example.com/sites/all/modules/elysia_cron/cron.php
+For example:
+
+`* * * * * wget -O - -q -t 1 http://www.example.com/modules/elysia_cron/cron.php`
 
 IF YOU WANT TO ENABLE CRON KEY SECURITY...
 
 ... you should also add the choosen cron key (from elysia_cron setup) to the
 call.
 
-Example: 
-* * * * * wget -O - -q -t 1 http://www.example.com/sites/all/modules/elysia_cron/cron.php?cron_key=12345678
+Example:
+
+`* * * * * wget -O - -q -t 1 http://www.example.com/modules/elysia_cron/cron.php?cron_key=12345678`
 
 That's all, now you can go the the cron administration page to configure your
 tasks.
-(NOTE: In D7, having a system crontab defined, you can set the "Run cron on 
+(NOTE: In D7, having a system crontab defined, you can set the "Run cron on
 visitor's requests, every" setting to "Never")
 
 By default elysia_cron will run all standard cron jobs sequentially (in a

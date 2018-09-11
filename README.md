@@ -26,8 +26,6 @@ For module developers API documetation read API.TXT
 
 - Ping feature, for external tracking services like host-tracker to tell whether cron is functioning properly on your site.
 - Drush support: you can call "drush elysia-cron run" to manually run extended cron.
-- CTools support for exports/backup of task settings.
-- Features support.
 
 Usage examples
 --------------
@@ -145,7 +143,7 @@ You can use the script section to easily create new jobs (by calling a php funct
 
 Every line of the script can be a comment (if it starts with #) or a job definition.
 
-The syntax of a job definition is: 
+The syntax of a job definition is:
 
 ```
 <-> [rule] <ctx:CONTEXT> [job]
@@ -188,10 +186,12 @@ This project is GPL v2 software. See the LICENSE.txt file in this directory for 
 
 Maintainers
 -----------
-Originally written for Drupal by
-
-- Eric Berdondini (https://www.drupal.org/u/gotheric)
-
-Ported to Backdrop CMS by Herb v/d Dool
 
 This module is seeking maintainers.
+
+Credit
+------
+
+Ported to Backdrop CMS by Herb v/d Dool.
+
+Originally written for Drupal by Eric Berdondini (https://www.drupal.org/u/gotheric).

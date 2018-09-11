@@ -26,11 +26,11 @@ include_once BACKDROP_ROOT . '/core/includes/bootstrap.inc';
 backdrop_override_server_variables(array('SCRIPT_NAME' => '/core/cron.php'));
 backdrop_bootstrap(BACKDROP_BOOTSTRAP_FULL);
 
-if ((variable_get('cron_key') && empty($_GET['cron_key'])) || !empty($_GET['cron_key']) && variable_get('cron_key') != $_GET['cron_key']) {
+if ((state_get('cron_key') && empty($_GET['cron_key'])) || !empty($_GET['cron_key']) && state_get('cron_key') != $_GET['cron_key']) {
   watchdog('cron', 'Cron could not run because an invalid key was used.', array(), WATCHDOG_NOTICE);
   backdrop_access_denied();
 }
-elseif (variable_get('maintenance_mode', 0) && !variable_get('elysia_cron_run_maintenance', FALSE)) {
+elseif (config_get('system.core', 'maintenance_mode') && config_get('elysia_cron', 'run_maintenance') != TRUE) {
   watchdog('cron', 'Cron could not run because the site is in maintenance mode.', array(), WATCHDOG_NOTICE);
   backdrop_access_denied();
 }
