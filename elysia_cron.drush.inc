@@ -68,7 +68,7 @@ function elysia_cron_drush_command() {
       'ignore-time' => 'run channels/tasks even if not ready for execution',
       'ignore-running' => 'run channels/tasks even if already running',
     ),
-    'bootstrap' => DRUSH_BOOTSTRAP_BACKDROP_FULL,
+    'bootstrap' => 'DRUSH_BOOTSTRAP_BACKDROP_FULL',
   );
 
   return $items;
