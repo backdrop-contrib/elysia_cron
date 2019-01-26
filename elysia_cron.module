@@ -71,8 +71,8 @@ function elysia_cron_menu_alter(&$items) {
   $items['admin/config/system/cron']['access arguments'] = array('view elysia_cron');
   $items['admin/config/system/cron']['file'] = NULL;
 
-  $items['admin/reports/status/run-cron']['page callback'] = 'elysia_cron_run';
-  $items['admin/reports/status/run-cron']['page arguments'] = array(TRUE);
+  $items['admin/reports/status/run-cron']['page callback'] = 'elysia_cron_run_manually';
+  $items['admin/reports/status/run-cron']['file'] = NULL;
 }
 
 /**
@@ -1297,6 +1297,21 @@ function elysia_cron_run($manual_run = FALSE, $ignore_disable = FALSE, $ignore_t
   elysia_cron_unprepare_run($manual_run);
 
   return $execute;
+}
+
+/**
+ * Menu callback: run cron manually.
+ */
+function elysia_cron_run_manually() {
+  // Run cron manually
+  if (elysia_cron_run(TRUE)) {
+    drupal_set_message(t('Cron ran successfully.'));
+  }
+  else {
+    drupal_set_message(t('Cron run failed.'), 'error');
+  }
+
+  drupal_goto('admin/reports/status');
 }
 
 /**
