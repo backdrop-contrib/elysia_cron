@@ -74,14 +74,15 @@ function elysia_cron_menu() {
  */
 function elysia_cron_menu_alter(&$items) {
   // Override default cron page.
-  $items['admin/config/system/cron'] = array(
-    'title' => 'Cron Settings',
-    'description' => 'View and manage cron table',
-    'page callback' => 'elysia_cron_admin_page',
-    'access callback' => 'elysia_cron_access',
-    'access arguments' => array('view elysia_cron'),
-    'file' => NULL,
-  ) + $items['admin/config/system/cron'];
+  $items['admin/config/system/cron']['title'] = 'Cron Settings';
+  $items['admin/config/system/cron']['description'] = 'View and manage cron table';
+  $items['admin/config/system/cron']['page callback'] = 'elysia_cron_admin_page';
+  $items['admin/config/system/cron']['access callback'] = 'elysia_cron_access';
+  $items['admin/config/system/cron']['access arguments'] = array('view elysia_cron');
+  $items['admin/config/system/cron']['file'] = NULL;
+
+  $items['admin/reports/status/run-cron']['page callback'] = 'elysia_cron_run_manually';
+  $items['admin/reports/status/run-cron']['file'] = NULL;
 }
 
 /**
@@ -153,16 +154,19 @@ function elysia_cron_exit() {
 function elysia_cron_cron() {
   global $_elysia_cron_exit_phase, $_elysia_cron_drush;
 
-  // If invoked "core-cron" via drush i'll redirect to elysia-cron handler.
-  if (function_exists('elysia_cron_drush_detect') && elysia_cron_drush_detect()) {
-    elysia_cron_drush_invoke(TRUE);
-  }
-
-  // First cron run is executed in standard backdrop way.
+  // First cron run is executed in standard Backdrop way.
   // This is to enable the use of install profiles.
   if (state_get('cron_last', 0) <= state_get('install_time', 0)) {
     return;
   }
+
+  // If cron has been executed via "drush core-cron" or any other custom drush
+  // command then we run internal cron handler which is designed to handle
+  // cron executions from drush.
+  if (function_exists('elysia_cron_drush_detect') && elysia_cron_drush_detect()) {
+    elysia_cron_drush_invoke();
+  }
+
   // If the path is 'admin/*', or if the user is not anonymous,
   // this is a manual cron run (probably by admin/logs/status),
   // but not if we are in the exit phase (= this a "poormanscron" run).
@@ -195,7 +199,7 @@ function elysia_cron_cron() {
     state_set('cron_last', time());
   }
 
-  exit();
+  backdrop_exit();
 }
 
 /**
@@ -830,7 +834,7 @@ function elysia_cron_debug($message, $vars = array(), $type = WATCHDOG_NOTICE) {
   if ($type < WATCHDOG_NOTICE || config_get('elysia_cron.settings', 'debug_messages')) {
     watchdog('cron', $message, $vars, $type);
   }
-  if (!empty($_elysia_cron_drush) && $_elysia_cron_drush >= 2 && ($type >= WATCHDOG_NOTICE || !drush_get_option("verbose", FALSE))) {
+  if (!empty($_elysia_cron_drush) && $_elysia_cron_drush >= 2 && ($type >= WATCHDOG_NOTICE || drush_get_option("verbose", FALSE))) {
     if ($type >= WATCHDOG_NOTICE) {
       drush_print(strip_tags(dt($message, $vars)));
     }
@@ -947,8 +951,8 @@ function elysia_cron_module_jobs() {
 
             $jobs[$job] = $jobs[$job] + array(
               'module' => $module,
-              'callback' => is_callable($job) ? $job : $function,
-              'arguments' => is_callable($job) ? array() : array('execute', $job),
+              'callback' => $job,
+              'arguments' => array(),
             );
           }
         }
@@ -1048,7 +1052,7 @@ function elysia_cron_prepare_run($manual_run, $start = TRUE) {
 
     // Try to allocate enough time to run all the hook_cron implementations.
     if (!ini_get('safe_mode') && _elysia_cron_function_available('set_time_limit')) {
-      set_time_limit(config_get('elysia_cron.settings', 'time_limit'));
+      @set_time_limit(config_get('elysia_cron.settings', 'time_limit'));
     }
 
     // Prevent session information from being saved while cron is running.
@@ -1200,6 +1204,21 @@ function elysia_cron_run($manual_run = FALSE, $ignore_disable = FALSE, $ignore_t
 }
 
 /**
+ * Menu callback: run cron manually.
+ */
+function elysia_cron_run_manually() {
+  // Run cron manually
+  if (elysia_cron_run(TRUE)) {
+    backdrop_set_message(t('Cron ran successfully.'));
+  }
+  else {
+    backdrop_set_message(t('Cron run failed.'), 'error');
+  }
+
+  backdrop_goto('admin/reports/status');
+}
+
+/**
  * Public function to execute all jobs in a channel.
  *
  * @param bool $ignore_disable
@@ -1208,6 +1227,9 @@ function elysia_cron_run($manual_run = FALSE, $ignore_disable = FALSE, $ignore_t
  *   Run channel (and all it's jobs) job even if not ready.
  * @param bool $ignore_running
  *   Run the channel (and all it's jobs) even if already running.
+ *
+ * @return bool
+ *   Result of execution.
  */
 function elysia_cron_run_channel($channel, $ignore_disable = FALSE, $ignore_time = FALSE, $ignore_running = FALSE) {
   global $_elysia_cron_settings_by_channel;
@@ -1353,8 +1375,11 @@ function elysia_cron_internal_execute_job($job) {
 
   try {
     if (!empty($_elysia_cron_settings[$job]['file'])) {
-      include_once((!empty($_elysia_cron_settings[$job]['file path']) ? $_elysia_cron_settings[$job]['file path'] : backdrop_get_path('module', $_elysia_cron_settings[$job]['module'])) . DIRECTORY_SEPARATOR . $_elysia_cron_settings[$job]['file']);
+      $file_path = !empty($_elysia_cron_settings[$job]['file path']) ? $_elysia_cron_settings[$job]['file path'] : backdrop_get_path('module', $_elysia_cron_settings[$job]['module']);
+      $file_path .= DIRECTORY_SEPARATOR . $_elysia_cron_settings[$job]['file'];
+      include_once $file_path;
     }
+
     if (!empty($_elysia_cron_settings[$job]['expression'])) {
       eval($_elysia_cron_settings[$job]['expression']);
     }
@@ -1362,7 +1387,15 @@ function elysia_cron_internal_execute_job($job) {
       call_user_func_array($_elysia_cron_settings[$job]['callback'], $_elysia_cron_settings[$job]['arguments']);
     }
     else {
-      elysia_cron_error('Execution of ' . $job . ' failed, can\'t find function!', array(), TRUE);
+      $function = $_elysia_cron_settings[$job]['module'] . '_cronapi';
+      $arguments = array('execute', $job);
+
+      if (is_callable($function)) {
+        call_user_func_array($function, $arguments);
+      }
+      else {
+        elysia_cron_error('Execution of ' . $job . ' failed, can\'t find function!', array(), TRUE);
+      }
     }
   }
   catch (Exception $e) {
@@ -1424,7 +1457,8 @@ function elysia_cron_check_run_job($job) {
 /**
  * Find an idle channel (not running, or stuck). If found one, set it as running and returns available jobs.
  *
- * @return if found returns array { 'name' => name of channel, 'jobs' => array of active jobs }, else return FALSE
+ * @return array|bool
+ *   If found returns array { 'name' => name of channel, 'jobs' => array of active jobs }, else return FALSE.
  */
 function elysia_cron_run_available_channel($ignore_disable = FALSE, $ignore_time = FALSE, $ignore_running = FALSE) {
   global $_elysia_cron_settings_by_channel;
@@ -1486,7 +1520,7 @@ function elysia_cron_execute_aborted($channel) {
  * Used for unexpected termination of code.
  */
 function elysia_cron_internal_execute_channel_cleanup() {
-  global $_elysia_cron_settings, $_elysia_cron_current_channel, $_cron_completed, $_cron_completed_time;
+  global $_elysia_cron_current_channel, $_cron_completed;
 
   if ($_cron_completed) {
     return;
@@ -1719,22 +1753,25 @@ function elysia_cron_ping_page() {
   $max_interval = config_get('elysia_cron.settings', 'alert_interval') * 60;
 
   if ($diff > $max_interval) {
-    return backdrop_not_found();
+    backdrop_not_found();
+    backdrop_exit();
   }
-  else {
-    $aoutput = array();
-    $aoutput[] = array(
-      '#type' => 'markup',
-      '#markup' => t('Cron has been called within maximum lapse time.'),
-    );
-    return $aoutput;
-  }
+
+  $aoutput = array();
+  $aoutput[] = array(
+    '#type' => 'markup',
+    '#markup' => t('Cron has been called within maximum lapse time.'),
+  );
+  return $aoutput;
 }
 
 /*******************************************************************************
  * BACKDROP QUEUE SUPPORT
  ******************************************************************************/
 
+/**
+ * Implements hook_cronapi().
+ */
 function elysia_cron_cronapi($op, $job = FALSE) {
   $items = array();
   $config = config('elysia_cron.settings');
@@ -1773,6 +1810,14 @@ function elysia_cron_cronapi($op, $job = FALSE) {
   return $items;
 }
 
+/**
+ * Callback for cronapi.
+ *
+ * @param string $queue_name
+ *   Queue name.
+ * @param array $info
+ *   Info about queue.
+ */
 function elysia_cron_queue_exec($queue_name, $info) {
   $function = $info['worker callback'];
   $end = time() + (isset($info['time']) ? $info['time'] : 15);
@@ -1802,6 +1847,9 @@ function elysia_cron_queue_exec($queue_name, $info) {
  *   Array of links under admin/* that were removed by
  *   admin_menu_adjust_items(). If one of these links is added back,
  *   it should be removed from the array.
+ *
+ * @return array
+ *   Links array.
  */
 function elysia_cron_admin_menu(&$deleted) {
   $links = array();

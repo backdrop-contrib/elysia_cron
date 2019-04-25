@@ -135,7 +135,7 @@ function module_cron_alter(&$data) {
 HANDLING DEFAULT MODULE_CRON FUNCTION
 -----------------------------------------------------------------------------
 
-To support standard drupal cron, all cron hooks (*_cron function) are
+To support standard Backdrop cron, all cron hooks (*_cron function) are
 automatically added to supported jobs, even if you don't declare them
 on cronapi hook (or if you don't implement the hook at all).
 However you can define job description and job rule in the same way as

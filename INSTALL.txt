@@ -2,7 +2,7 @@ UPGRADE A NEW VERSION
 ----------------------
 
 If you are upgrading from an old version of elysia_cron you should simply 
-replace module files. You don't even need to execute the "update.php" drupal
+replace module files. You don't even need to execute the "update.php" backdrop
 process: Elysia cron will detect the new version on its first run and updates
 itself automatically.
 
@@ -31,9 +31,9 @@ STEP B: CHANGE SYSTEM CRONTAB (OPTIONAL)
 
 To get the full potential out of elysia cron and have the full control over you
 tasks a further step is needed: you need to configure the system crontab to
-execute drupal cron every minute.
+execute backdrop cron every minute.
 
-To do this refer to the section "Configuring cron jobs" of drupal documentation:
+To do this refer to the section "Configuring cron jobs" of backdrop documentation:
 http://drupal.org/cron
 
 The only difference is that you should use the "* * * * *" rule part instead of
