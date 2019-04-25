@@ -10,6 +10,9 @@
  *
  * @return array
  *   Renderable array.
+ *
+ * @throws Exception
+ *   Exceptions from theme().
  */
 function elysia_cron_admin_page() {
   $aoutput = array();
@@ -152,22 +155,22 @@ function elysia_cron_admin_page() {
 
   $legend_icons = array(
     'idle' => theme('image', array(
-      'path' => $ipath . 'idle.png',
+      'uri' => $ipath . 'idle.png',
       'alt' => t('Idle'),
       'title' => t('Idle'),
     )),
     'waiting' => theme('image', array(
-      'path' => $ipath . 'waiting.png',
+      'uri' => $ipath . 'waiting.png',
       'alt' => t('Waiting for execution'),
       'title' => t('Waiting for execution'),
     )),
     'running' => theme('image', array(
-      'path' => $ipath . 'running.png',
+      'uri' => $ipath . 'running.png',
       'alt' => t('Running'),
       'title' => t('Running'),
     )),
     'disabled' => theme('image', array(
-      'path' => $ipath . 'disabled.png',
+      'uri' => $ipath . 'disabled.png',
       'alt' => t('Disabled'),
       'title' => t('Disabled'),
     )),
@@ -202,8 +205,9 @@ function elysia_cron_settings_form() {
   global $_elysia_cron_settings_by_channel;
   elysia_cron_initialize();
 
-  $form = array();
   $config = config('elysia_cron.settings');
+
+  $form = array();
   $form['#attached']['js'][] = backdrop_get_path('module', 'elysia_cron') . '/js/elysia_cron.js';
 
   $form['prefix_1'] = array(
@@ -445,14 +449,6 @@ EOT
     . '<b>' . t('Channel') . '</b>: ' . t('Specify a channel for the job (create the channel if not exists)') . '<br /><br />',
     '#type' => 'fieldset',
     '#collapsible' => TRUE,
-  );
-
-  $jobchannels = array(
-    '#title' => t('Job channel associations'),
-    '#description' => t('Leave empty for default channel'),
-    '#type' => 'fieldset',
-    '#collapsible' => TRUE,
-    '#collapsed' => TRUE,
   );
 
   foreach ($_elysia_cron_settings_by_channel as $channel => $cconf) {

@@ -156,6 +156,7 @@ function module_cronapi($op, $job = NULL) {
   return $items;
 }
 ```
+
 ```
 function module_cron() {
   ...
