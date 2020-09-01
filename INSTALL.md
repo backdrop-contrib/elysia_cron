@@ -1,5 +1,5 @@
 INSTALLATION
--------------
+============
 
 For the basic install you only need to enable the module and Elysia Cron will be
 up and running.
@@ -10,29 +10,28 @@ For example, if you need only the "Once a day", "Once a week" or "Once a month"
 schedule rules the basic install is fine.
 
 Instead, if you need:
+
 - to run some tasks more often than once an hour (eg: you have a function that
   should be executed every 5 minutes)
 - to execute a task at an exact time (eg:you must run a function at exactly
   "17:23")
 ... you must follow Step B
 
-
 STEP B: CHANGE SYSTEM CRONTAB (OPTIONAL)
------------------------------------------
+----------------------------------------
 
 To get the full potential out of elysia cron and have the full control over you
 tasks a further step is needed: you need to configure the system crontab to
 execute Backdrop cron every minute.
 
-To do this refer to the section "Configuring cron jobs" of documentation:
-http://drupal.org/cron
+To do this refer to the section ["Configuring cron jobs" of documentation](https://backdropcms.org/cron).
 
 The only difference is that you should use the "`* * * * *`" rule part instead of
 "`0 * * * *`" or "`45 * * * *`" as described in the guide.
 
 While you're editing the system crontab, it's also recommended to replace the
-"/cron.php" part with "/sites/all/modules/elysia_cron/cron.php" (if you have
-installed elysia_cron in "sites/all/modules" directory).
+"/cron.php" part with "/modules/elysia_cron/cron.php" (if you have
+installed elysia_cron in "modules" directory).
 This is an optional step (you can leave "/cron.php" if you want), doing it will
 result in a better performance in bigger sites (elysia_cron's cron.php handles
 cache in a better way).
@@ -52,7 +51,7 @@ Example:
 
 That's all, now you can go the the cron administration page to configure your
 tasks.
-(NOTE: In D7, having a system crontab defined, you can set the "Run cron on
+(NOTE: In Backdrop, having a system crontab defined, you can set the "Run cron on
 visitor's requests, every" setting to "Never")
 
 By default elysia_cron will run all standard cron jobs sequentially (in a
@@ -71,9 +70,10 @@ PERMISSIONS
 ------------
 
 There are three permission provided by module:
- * Administer elysia cron - Perform changes to cron jobs timings, disable cron
+
+* Administer elysia cron - Perform changes to cron jobs timings, disable cron
  or single jobs and access cron execution statistics;
- * Execute elysia cron jobs - Allow users to view statistics, execution status
+* Execute elysia cron jobs - Allow users to view statistics, execution status
  and do manually execute cron jobs;
- * View elysia cron stats - Allows users to view statistics and execution status
+* View elysia cron stats - Allows users to view statistics and execution status
  of cron jobs;

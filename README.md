@@ -1,9 +1,8 @@
-Elysia Cron
-===========
+# Elysia Cron
+
 Elysia Cron extends Backdrop CMS standard cron, allowing a fine grain control over each task and several ways to add custom cron jobs to your site.
 
-Features
---------
+## Features
 
 - Set the timings and frequencies of each cron task (you can run some jobs every day at a specified hour, other only monthly and so on...). For each task you can simply choose between some frequently used options ("once a day", "once a month" ...), or use a powerful "linux crontab"-like syntax to set the accurate timings. You can even define your frequently used options to speed up site configuration.
 - Parallel execution of cron task: you can group jobs in channels and execute then simultaneously: so a task that takes a lot of time to execute won't block other tasks that need to be executed every 5 minutes...
@@ -22,49 +21,40 @@ Elysia has no dependencies with contributed modules, and doesn't need to patch t
 For installation instructions read INSTALL.TXT
 For module developers API documetation read API.TXT
 
-###3rd party integration:
+## 3rd party integration
 
 - Ping feature, for external tracking services like host-tracker to tell whether cron is functioning properly on your site.
 - Drush support: you can call "drush elysia-cron run" to manually run extended cron.
 
-Usage examples
---------------
+## Usage examples
 
 Elysia cron is usually used in large sites that needs performance optimization.
 
 - Avoid Backdrop CMS peak loads by distributing heavy load tasks during quiet periods of the day: for example you may want to rebuild the XML Sitemap of your site at 2:00AM in the morning, where usually only a few people are visiting your site. You can even move some tasks to be executed only once a month (log rotation, old records expiry...).
-
 - If you have tasks that should be executed very often, but don't want to execute ALL Backdrop cron tasks that often! For example, you may want to check for emails that needs to be sent to your users every 2 minutes. Standard cron is managed in a "monolithic" way, so even if you find out how to execute it every 2 minutes, you will end in having all cron tasks executed so often, with a lot of performance problems.
-
 - Fine tune cron cache management : Backdrop cron will invalidate variable cache every cron run, and this is a great performance problem if you have a frequently called task. Elysia cron optimize cache management, and doesn't need to invalidate cache.
-
 - Setup tasks that should be run at a precise time: for example if you want to send a SimpleNews newsletter every monday at 9:00AM, you can do it.
-
 - Parallel execution: if you have a task that takes a lot of time to execute, you can setup a different channel for it so it won't block other tasks that need to be executed every 5 minutes.
-
 - Turn off (disable) a cron task/feature you don't need.
-
 - Debug system cron problems. If your cron does not terminate correctly you can use extended logging, see at each cron timings and disable task to track down the problem.
 
-Channels
---------
+## Channels
 
 Channels are groups of tasks. Each channel is a "parallel line" of execution (= multiple channels can be executed simultaneously). Tasks inside a channel will be executed sequentially (if they should).
 
 WARNING: It's not recommended to create more than 2 or 3 channels. Every channel will increase the delay between each cron check (of the same channel), because each cron call will cycle between all channels. So, for example:
 
-* If you have 1 channel it will be checked once a minute.
-* If you have 2 channel each one will be checked every 2 minutes (almost usually, when the other one is running it will be checked once a minute).
-* It you have 10 channels there will be a check every 10 minutes... if you have a job that should be executed every 5 minutes it won't do so!
+- If you have 1 channel it will be checked once a minute.
+- If you have 2 channel each one will be checked every 2 minutes (almost usually, when the other one is running it will be checked once a minute).
+- It you have 10 channels there will be a check every 10 minutes... if you have a job that should be executed every 5 minutes it won't do so!
 
-Drush support
--------------
+## Drush support
 
 Elysia Cron 2.0 adds a simple support for Drush module. (Note: not currently ported to Backdrop)
 
 Run all cron tasks in all active modules for specified site using elysia cron system. This replaces the standard "core-cron" drush handler.
 
-###Examples:
+### Examples:
 
 ```
  elysia-cron run                           Run all cron tasks in all active
@@ -79,7 +69,7 @@ Run all cron tasks in all active modules for specified site using elysia cron sy
  elysia-cron disable search_cron           Disable search index build task
 ```
 
-###Options:
+### Options:
 
 ```
  --elysia-cron-verbose                     enable extended output (the same as
@@ -94,10 +84,9 @@ Run all cron tasks in all active modules for specified site using elysia cron sy
  --verbose                                 enable extended output
 ```
 
-Rules and Script Syntax
------------------------
+## Rules and Script Syntax
 
-###1. Fields order
+### 1. Fields order
 
 ```
  +---------------- minute (0 - 59)
@@ -115,18 +104,16 @@ For "day of the week" (field 5), 0 is considered Sunday, 6 is Saturday (7 is an 
 
 A job is executed when the time/date specification fields all match the current time and date. There is one exception: if both "day of month" and "day of week" are restricted (not "*"), then either the "day of month" field (3) or the "day of week" field (5) must match the current day (even though the other of the two fields need not match the current day).
 
-2. Fields operator
-------------------
+### 2. Fields operator
 
 There are several ways of specifying multiple date/time values in a field:
 
-* The comma (',') operator specifies a list of values, for example: "1,3,4,7,8"
-* The dash ('-') operator specifies a range of values, for example: "1-6", which is equivalent to "1,2,3,4,5,6"
-* The asterisk ('*') operator specifies all possible values for a field. For example, an asterisk in the hour time field would be equivalent to 'every hour' (subject to matching other specified fields).
-* The slash ('/') operator (called "step") can be used to skip a given number of values. For example, "*/3" in the hour time field is equivalent to "0,3,6,9,12,15,18,21".
+- The comma (',') operator specifies a list of values, for example: "1,3,4,7,8"
+- The dash ('-') operator specifies a range of values, for example: "1-6", which is equivalent to "1,2,3,4,5,6"
+- The asterisk ('*') operator specifies all possible values for a field. For example, an asterisk in the hour time field would be equivalent to 'every hour' (subject to matching other specified fields).
+- The slash ('/') operator (called "step") can be used to skip a given number of values. For example, "*/3" in the hour time field is equivalent to "0,3,6,9,12,15,18,21".
 
-3. Examples
------------
+### 3. Examples
 
 ```
  */15 * * * : Execute job every 15 minutes
@@ -136,8 +123,7 @@ There are several ways of specifying multiple date/time values in a field:
  at every monday.
 ```
 
-4. Scripts
-----------
+### 4. Scripts
 
 You can use the script section to easily create new jobs (by calling a php function) or to change the scheduling of an existing job.
 
@@ -151,17 +137,16 @@ The syntax of a job definition is:
 
 (Tokens betweens [] are mandatory)
 
-* <->: a line starting with "-" means that the job is DISABLED.
-* [rule]: a crontab schedule rule. See above.
-* <ctx:CHANNEL>: set the channel of the task.
-* [job]: could be the name of a supported job (for example: 'search_cron') or a function call, ending with ; (for example: 'process_queue();').
+- <->: a line starting with "-" means that the job is DISABLED.
+- [rule]: a crontab schedule rule. See above.
+- <ctx:CHANNEL>: set the channel of the task.
+- [job]: could be the name of a supported job (for example: 'search_cron') or a function call, ending with ; (for example: 'process_queue();').
 
 A comment on the line just preceding a job definition is considered the job description.
 
 Remember that script OVERRIDES all settings on single jobs sections or channel sections of the configuration
 
-5. Example of script
---------------------
+### 5. Example of script
 
 ```
 # Search indexing every 2 hours (i'm setting this as the job description)
@@ -179,18 +164,15 @@ Remember that script OVERRIDES all settings on single jobs sections or channel s
 0 1 * * *  send_summary_mail('test@test.com', false);
 ```
 
-License
--------
+## License
 
 This project is GPL v2 software. See the LICENSE.txt file in this directory for complete text.
 
-Maintainers
------------
+## Maintainers
 
 This module is seeking maintainers.
 
-Credit
-------
+## Credit
 
 Ported to Backdrop CMS by Herb v/d Dool.
 

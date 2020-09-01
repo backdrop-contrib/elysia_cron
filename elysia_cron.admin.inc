@@ -335,7 +335,7 @@ EOT
     . '<br>'
     . t("This way is fine if you don't need a great control over job starting times and execution frequency.")
     . '<br />'
-    . t('If you need fine-grained control over cron timings use the crontab method, as <a href="!cron_url">described in Backdrop installation guide</a>.', array('!cron_url' => url('http://drupal.org/cron')))
+    . t('If you need fine-grained control over cron timings use the crontab method, as <a href="!cron_url">described in Backdrop installation guide</a>.', array('!cron_url' => url('https://backdropcms.org/cron')))
     . '<br />'
     . t("If you have a very large site, or you need to execute some jobs very often (more than once an hour) refer to Elysia cron's INSTALL.TXT to improve main cron setup."),
     '#options' => $options,
