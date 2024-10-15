@@ -170,7 +170,8 @@ This project is GPL v2 software. See the LICENSE.txt file in this directory for 
 
 ## Maintainers
 
-This module is seeking maintainers.
+* [Herb v/d Dool](https://github.com/herbdool)
+* This module is seeking additional maintainers.
 
 ## Credit
 
