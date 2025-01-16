@@ -824,21 +824,39 @@ function elysia_cron_error($message, $vars = array(), $skip_user_message = FALSE
 }
 
 /**
- * Log a debug in watchdog (do not print an user message).
+ * Log a debug in watchdog (optionally print a user message).
  *
  * Drush see it in verbose mode.
  */
 function elysia_cron_debug($message, $vars = array(), $type = WATCHDOG_NOTICE) {
-  global $_elysia_cron_drush;
   if ($type < WATCHDOG_NOTICE || config_get('elysia_cron.settings', 'debug_messages')) {
     watchdog('cron', $message, $vars, $type);
   }
+  global $_elysia_cron_drush;
   if (!empty($_elysia_cron_drush) && $_elysia_cron_drush >= 2 && ($type >= WATCHDOG_NOTICE || drush_get_option("verbose", FALSE))) {
     if ($type >= WATCHDOG_NOTICE) {
       drush_print(strip_tags(dt($message, $vars)));
     }
     else {
-      drush_log(strip_tags(dt($message, $vars)), $type == WATCHDOG_ERROR ? "error" : (($type == WATCHDOG_ERROR ? "warning" : "notice")));
+      drush_log(strip_tags(dt($message, $vars)), $type == WATCHDOG_ERROR ? "error" : (($type == WATCHDOG_WARNING ? "warning" : "notice")));
+    }
+  }
+  global $_elysia_cron_bee;
+  if (!empty($_elysia_cron_bee) && $_elysia_cron_bee >= 2 && ($type >= WATCHDOG_NOTICE)) {
+    if ($type >= WATCHDOG_NOTICE) {
+      bee_message(strip_tags(bt($message, $vars)), 'info');
+    }
+    else {
+      if ($type == WATCHDOG_ERROR) {
+        $log_type = "error";
+      }
+      elseif ($type == WATCHDOG_WARNING) {
+        $log_type = "warning";
+      }
+      else {
+        $log_type = "notice";
+      }
+      bee_log(strip_tags(bt($message, $vars)), $log_type);
     }
   }
 }
