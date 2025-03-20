@@ -122,7 +122,6 @@ function bee_elysia_cron_run_wrapper($arguments, $options) {
     }
   }
 
-  $verbose = $options['verbose'];
   if (!$options['verbose']) {
     $options['verbose'] = $options['elysia-cron-verbose'];
   }
