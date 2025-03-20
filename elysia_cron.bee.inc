@@ -56,6 +56,7 @@ function elysia_cron_bee_command() {
         'op' => 'Operation: list, run, disable, enable',
         'target' => 'Target of operation (optional): usually a task name or a channel name starting with "@"',
       ),
+      'optional_arguments' => array('target'),
       'options' => array(
         'quiet' => array(
           'description' => bt('Suppress all output.'),
