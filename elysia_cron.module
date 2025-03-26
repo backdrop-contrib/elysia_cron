@@ -203,36 +203,39 @@ function elysia_cron_cron() {
 }
 
 /**
- * Implements hook_cron().
- *
- * I use help section for admin/build/modules page to check if elysia_cron
- * is the module with the smallest weight.
- * If it's not i'll set it and print a message.
+ * Implements hook_modules_installed().
  */
-function elysia_cron_help($section, $arg = FALSE) {
-  if ($section == 'admin/modules') {
-    $query = db_select('system', 's');
-    $query->addExpression('MIN(weight)');
-    $min = $query->condition('s.name', 'elysia_cron', '!=')
-      ->execute()
-      ->fetchField();
+function elysia_cron_modules_installed($modules) {
+  // Check if elysia_cron is the module with the smallest weight.
+  // If it's not, set it as the smalled weight and output a message.
+  $query = db_select('system', 's');
+  $query->addExpression('MIN(weight)');
+  $min = $query->condition('s.name', 'elysia_cron', '!=')
+    ->execute()
+    ->fetchField();
 
-    $weight = db_select('system', 's')
-      ->fields('s', array('weight'))
-      ->condition('s.name', 'elysia_cron')
-      ->execute()
-      ->fetchField();
+  $weight = db_select('system', 's')
+    ->fields('s', array('weight'))
+    ->condition('s.name', 'elysia_cron')
+    ->execute()
+    ->fetchField();
 
-    if ($min <= $weight) {
-      elysia_cron_message('Elysia cron module is not the module with the smallest weight (and it must be). Updating weight...');
-      db_update('system')
-        ->fields(array('weight' => $min - 1))
-        ->condition('name', 'elysia_cron')
-        ->execute();
-    }
+  if ($min <= $weight) {
+    elysia_cron_message('Elysia cron module is not the module with the smallest weight (and it must be). Updating the weight.');
+    db_update('system')
+      ->fields(array('weight' => $min - 1))
+      ->condition('name', 'elysia_cron')
+      ->execute();
   }
 }
 
+/**
+ * Get channel or job name
+ *
+ * @param string $name
+ *
+ * @return string|false
+ */
 function _ec_get_name($name) {
   $maxlen = 120;
   if (strlen($name) < $maxlen) {
@@ -242,6 +245,14 @@ function _ec_get_name($name) {
   return substr($name, 0, $border) . md5($name) . substr($name, -$border);
 }
 
+/**
+ * Set cron job key
+ *
+ * @param string $name
+ * @param bool $channel
+ * @param array $values
+ *
+ */
 function elysia_cron_set($name, $channel = FALSE, $values = array()) {
   if ($channel) {
     $name = ':' . $name;
@@ -254,6 +265,17 @@ function elysia_cron_set($name, $channel = FALSE, $values = array()) {
   unset($_elysia_cron_db_cache[$name]);
 }
 
+/**
+ * Get cron job key
+ *
+ * @param string $name
+ * @param bool $channel
+ * @param string|false $key
+ * @param mixed $default
+ * @param bool $refresh
+ *
+ * @return mixed
+ */
 function elysia_cron_get($name, $channel = FALSE, $key = FALSE, $default = FALSE, $refresh = FALSE) {
   global $_elysia_cron_db_cache;
   static $elysia_cron_defaults;
@@ -302,9 +324,9 @@ function elysia_cron_get($name, $channel = FALSE, $key = FALSE, $default = FALSE
  *   Channel status.
  */
 function elysia_cron_is_channel_disabled($channel, $default = FALSE, $refresh = FALSE) {
-  // May be overridden by a static conf.
-  if (isset($GLOBALS['conf'][$n = 'ecc_' . _ec_get_name($channel) . '_d'])) {
-    return $GLOBALS['conf'][$n];
+  // May be overridden by a static setting.
+  if (isset($GLOBALS['settings'][$n = 'elysia_cron_channel_' . _ec_get_name($channel) . '_disabled'])) {
+    return $GLOBALS['settings'][$n];
   }
 
   return elysia_cron_get($channel, TRUE, 'disable', $default, $refresh);
@@ -348,9 +370,9 @@ function elysia_cron_reset_channel_disabled($channel) {
  *   Formatted rule for specified channel.
  */
 function elysia_cron_get_channel_rule($channel, $default = '', $refresh = FALSE) {
-  // May be overridden by a static conf.
-  if (isset($GLOBALS['conf'][$n = 'ecc_' . _ec_get_name($channel) . '_rul'])) {
-    return $GLOBALS['conf'][$n];
+  // May be overridden by a static setting.
+  if (isset($GLOBALS['settings'][$n = 'elysia_cron_channel_' . _ec_get_name($channel) . '_rule'])) {
+    return $GLOBALS['settings'][$n];
   }
 
   return elysia_cron_get($channel, TRUE, 'rule', $default, $refresh);
@@ -588,9 +610,9 @@ function elysia_cron_set_channel_stats($channel, array $data = array()) {
  *   Formatted job rule.
  */
 function elysia_cron_get_job_rule($job, $default = '', $refresh = FALSE) {
-  // May be overridden by a static conf.
-  if (isset($GLOBALS['conf'][$n = 'ec_' . _ec_get_name($job) . '_rul'])) {
-    return $GLOBALS['conf'][$n];
+  // May be overridden by a static setting.
+  if (isset($GLOBALS['settings'][$n = 'elysia_cron_job_' . _ec_get_name($job) . '_rule'])) {
+    return $GLOBALS['settings'][$n];
   }
 
   return elysia_cron_get($job, FALSE, 'rule', $default, $refresh);
@@ -632,9 +654,9 @@ function elysia_cron_reset_job_rule($job) {
  *   Job weight or empty string.
  */
 function elysia_cron_get_job_weight($job, $default = '', $refresh = FALSE) {
-  // May be overridden by a static conf.
-  if (isset($GLOBALS['conf'][$n = 'ec_' . _ec_get_name($job) . '_w'])) {
-    return $GLOBALS['conf'][$n];
+  // May be overridden by a static setting.
+  if (isset($GLOBALS['settings'][$n = 'elysia_cron_job_' . _ec_get_name($job) . '_weight'])) {
+    return $GLOBALS['settings'][$n];
   }
   return elysia_cron_get($job, FALSE, 'weight', $default, $refresh);
 }
@@ -661,26 +683,55 @@ function elysia_cron_reset_job_weight($job) {
   elysia_cron_set($job, FALSE, array('weight' => NULL));
 }
 
+/**
+ * Is cron job disabled
+ *
+ * @param string $job
+ * @param bool $default
+ * @param bool $refresh
+ *
+ * @return bool
+ */
 function elysia_cron_is_job_disabled($job, $default = FALSE, $refresh = FALSE) {
-  // May be overridden by a static conf.
-  if (isset($GLOBALS['conf'][$n = 'ec_' . _ec_get_name($job) . '_d'])) {
-    return $GLOBALS['conf'][$n];
+  // May be overridden by a static setting.
+  if (isset($GLOBALS['settings'][$n = 'elysia_cron_job_' . _ec_get_name($job) . '_disabled'])) {
+    return $GLOBALS['settings'][$n];
   }
   return elysia_cron_get($job, FALSE, 'disable', $default, $refresh);
 }
 
+/**
+ * Set cron job disabled
+ *
+ * @param string $job
+ * @param bool $value
+ */
 function elysia_cron_set_job_disabled($job, $value) {
   elysia_cron_set($job, FALSE, array('disable' => $value ? 1 : 0));
 }
 
+/**
+ * Reset cron job disabled status
+ *
+ * @param string $job
+ */
 function elysia_cron_reset_job_disabled($job) {
   elysia_cron_set($job, FALSE, array('disable' => NULL));
 }
 
+/**
+ * Get job channel
+ *
+ * @param string $job
+ * @param string $default
+ * @param bool $refresh
+ *
+ * @return string
+ */
 function elysia_cron_get_job_channel($job, $default = '', $refresh = FALSE) {
-  // May be overridden by a static conf.
-  if (isset($GLOBALS['conf'][$n = 'ec_' . _ec_get_name($job) . '_c'])) {
-    $c = $GLOBALS['conf'][$n];
+  // May be overridden by a static setting.
+  if (isset($GLOBALS['settings'][$n = 'elysia_cron_job_' . _ec_get_name($job) . '_channel'])) {
+    $c = $GLOBALS['settings'][$n];
   }
   else {
     // In this place, 'context' means 'channel'.
@@ -689,32 +740,81 @@ function elysia_cron_get_job_channel($job, $default = '', $refresh = FALSE) {
   return !$c ? $default : $c;
 }
 
+/**
+ * Set job channel
+ *
+ * @param string $job
+ * @param string $value
+ */
 function elysia_cron_set_job_channel($job, $value) {
   // In this place, 'context' means 'channel'.
   elysia_cron_set($job, FALSE, array('context' => $value));
 }
 
+/**
+ * Reset job channel
+ *
+ * @param string $job
+ */
 function elysia_cron_reset_job_channel($job) {
   // In this place, 'context' means 'channel'.
   elysia_cron_set($job, FALSE, array('context' => NULL));
 }
 
+/**
+ * Is job running
+ *
+ * @param string $job
+ * @param int $default
+ * @param bool $refresh
+ *
+ * @return int
+ */
 function elysia_cron_is_job_running($job, $default = 0, $refresh = FALSE) {
   return elysia_cron_get($job, FALSE, 'running', $default, $refresh);
 }
 
+/**
+ * Set job running
+ *
+ * @param string $job
+ * @param int $value
+ */
 function elysia_cron_set_job_running($job, $value) {
   elysia_cron_set($job, FALSE, array('running' => $value));
 }
 
+/**
+ * Get job last run
+ *
+ * @param string $job
+ * @param int $default
+ * @param bool $refresh
+ *
+ * @return int
+ */
 function elysia_cron_get_job_last_run($job, $default = 0, $refresh = FALSE) {
   return elysia_cron_get($job, FALSE, 'last_run', $default, $refresh);
 }
 
+/**
+ * Set job last run
+ *
+ * @param string $job
+ * @param int $value
+ */
 function elysia_cron_set_job_last_run($job, $value) {
   elysia_cron_set($job, FALSE, array('last_run' => $value));
 }
 
+/**
+ * Get job stats
+ *
+ * @param string $job
+ * @param bool $refresh
+ *
+ * @return array
+ */
 function elysia_cron_get_job_stats($job, $refresh = FALSE) {
   return array(
     'last_run' => elysia_cron_get($job, FALSE, 'last_run', 0, $refresh),
@@ -725,6 +825,17 @@ function elysia_cron_get_job_stats($job, $refresh = FALSE) {
   );
 }
 
+/**
+ * Set job stats
+ *
+ * @param string $job
+ * @param int $last_run
+ * @param int $last_execution_time
+ * @param int $execution_count
+ * @param int $avg_execution_time
+ * @param int $max_execution_time
+ * @param array $data
+ */
 function elysia_cron_set_job_stats(
   $job,
   $last_run = -1,
@@ -752,14 +863,27 @@ function elysia_cron_set_job_stats(
   elysia_cron_set($job, FALSE, $data);
 }
 
+/**
+ * Get last channel
+ *
+ * @return string
+ */
 function elysia_cron_last_channel() {
   return state_get('elysia_cron_last_channel', '');
 }
 
+/**
+ * Set last channel
+ *
+ * @param string $channel
+ */
 function elysia_cron_set_last_channel($channel) {
   state_set('elysia_cron_last_channel', $channel);
 }
 
+/**
+ * Reset status
+ */
 function elysia_cron_reset_stats() {
   global $_elysia_cron_settings, $_elysia_cron_settings_by_channel;
   elysia_cron_initialize();
@@ -870,6 +994,14 @@ function elysia_cron_warning($message, $vars = array()) {
   elysia_cron_debug($message, $vars, WATCHDOG_WARNING);
 }
 
+/**
+ * Decode script
+ *
+ * @param string $text
+ * @param bool $apply
+ *
+ * @return array
+ */
 function elysia_cron_decode_script($text, $apply = TRUE) {
   global $_elysia_cron_settings;
 
@@ -984,6 +1116,11 @@ function elysia_cron_module_jobs() {
   return $jobs;
 }
 
+/**
+ * Initialize
+ *
+ * @param bool $skipscript
+ */
 function elysia_cron_initialize($skipscript = FALSE) {
   global $_elysia_cron_settings, $_elysia_cron_settings_by_channel;
 
@@ -1040,6 +1177,14 @@ function elysia_cron_initialize($skipscript = FALSE) {
   }
 }
 
+/**
+ * Custom sort
+ *
+ * @param array $a
+ * @param array $b
+ *
+ * @return int
+ */
 function _elysia_cron_sort($a, $b) {
   if ((isset($a['weight']) ? $a['weight'] : 0) == (isset($b['weight']) ? $b['weight'] : 0)) {
     return strcmp((isset($a['key']) ? $a['key'] : ''), (isset($b['key']) ? $b['key'] : ''));
@@ -1326,6 +1471,9 @@ function elysia_cron_run_job($job, $ignore_disable = FALSE, $ignore_time = FALSE
   }
 }
 
+/**
+ * Run job cleanup
+ */
 function elysia_cron_run_job_cleanup() {
   global $_cron_completed, $_cron_executing_job;
 
@@ -1501,6 +1649,11 @@ function elysia_cron_run_available_channel($ignore_disable = FALSE, $ignore_time
   return $jobs ? array('name' => $channels[$j], 'jobs' => $jobs) : FALSE;
 }
 
+/**
+ * Execute aborted
+ *
+ * @param string $channel
+ */
 function elysia_cron_execute_aborted($channel) {
   global $_elysia_cron_settings_by_channel;
 
@@ -1613,11 +1766,21 @@ function elysia_cron_is_running() {
   return $running;
 }
 
+/**
+ * Job exists
+ *
+ * @param string $job
+ */
 function elysia_cron_job_exists($job) {
   global $_elysia_cron_settings;
   return isset($_elysia_cron_settings[$job]);
 }
 
+/**
+ * Channel exists
+ *
+ * @param string $channel
+ */
 function elysia_cron_channel_exists($channel) {
   global $_elysia_cron_settings_by_channel;
   return isset($_elysia_cron_settings_by_channel[$channel]);
@@ -1625,6 +1788,9 @@ function elysia_cron_channel_exists($channel) {
 
 /**
  * Obtain job description (translated)
+ *
+ * @param string $job
+ * @return string
  */
 function elysia_cron_description($job) {
   global $_elysia_cron_settings;
@@ -1658,7 +1824,10 @@ function elysia_cron_theme() {
 }
 
 /**
- * You can theme this function to provide your (untranslated) descriptions for cron functions, if they do not provide one.
+ * Theme callback for description.
+ *
+ * You can theme this function to provide your (untranslated) descriptions for
+ * cron functions, if they do not provide one.
  */
 function theme_elysia_cron_description($variables) {
   switch ($variables['job']) {
@@ -1759,7 +1928,11 @@ function theme_elysia_cron_description($variables) {
  ******************************************************************************/
 
 /**
- * Page callback for ping page.  Throws 404 if cron hasn't been called within configured time period.
+ * Page callback for ping page.  Throws 404 if cron hasn't been called within
+ * configured time period.
+ *
+ * @return array
+ *   Render array.
  */
 function elysia_cron_ping_page() {
   $last_run = state_get('elysia_cron_last_run', 0);
