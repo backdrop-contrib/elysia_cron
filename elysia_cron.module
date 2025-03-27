@@ -152,7 +152,7 @@ function elysia_cron_exit() {
  * It's used to replace backdrop cron.
  */
 function elysia_cron_cron() {
-  global $_elysia_cron_exit_phase, $_elysia_cron_drush;
+  global $_elysia_cron_exit_phase, $_elysia_cron_drush, $_elysia_cron_bee;
 
   // First cron run is executed in standard Backdrop way.
   // This is to enable the use of install profiles.
@@ -165,6 +165,13 @@ function elysia_cron_cron() {
   // cron executions from drush.
   if (function_exists('elysia_cron_drush_detect') && elysia_cron_drush_detect()) {
     elysia_cron_drush_invoke();
+  }
+
+  // If cron has been executed via "bee cron" or any other custom bee
+  // command then we run internal cron handler which is designed to handle
+  // cron executions from bee.
+  if (function_exists('elysia_cron_bee_detect') && elysia_cron_bee_detect()) {
+    elysia_cron_bee_invoke();
   }
 
   // If the path is 'admin/*', or if the user is not anonymous,
@@ -185,7 +192,7 @@ function elysia_cron_cron() {
     // (so the user sees the execution time updates).
     // This invalidates variable cache, but it's a manual execution,
     // it should be not a great performance problem.
-    if (empty($_elysia_cron_drush)) {
+    if (empty($_elysia_cron_drush) && empty($_elysia_cron_bee)) {
       state_set('cron_last', time());
     }
 
@@ -921,12 +928,15 @@ function elysia_cron_reset_stats() {
  * Drush see it.
  */
 function elysia_cron_message($message, $vars = array()) {
-  global $_elysia_cron_drush;
-  if (empty($_elysia_cron_drush)) {
+  global $_elysia_cron_drush, $_elysia_cron_bee;
+  if (empty($_elysia_cron_drush) && empty($_elysia_cron_bee)) {
     backdrop_set_message(t($message, $vars));
   }
-  else {
+  elseif($_elysia_cron_drush) {
     drush_log(strip_tags(dt($message, $vars)), 'ok');
+  }
+  elseif($_elysia_cron_bee) {
+    bee_log(strip_tags(bt($message, $vars)), 'ok');
   }
 }
 
@@ -936,8 +946,8 @@ function elysia_cron_message($message, $vars = array()) {
  * Drush see it (even if $skip_user_message)
  */
 function elysia_cron_error($message, $vars = array(), $skip_user_message = FALSE) {
-  global $_elysia_cron_drush;
-  if (empty($_elysia_cron_drush) && !$skip_user_message) {
+  global $_elysia_cron_drush, $_elysia_cron_bee;
+  if (empty($_elysia_cron_drush) && empty($_elysia_cron_bee) && !$skip_user_message) {
     backdrop_set_message(t($message, $vars), 'error');
   }
   /* @todo remove following code if not necessary.
