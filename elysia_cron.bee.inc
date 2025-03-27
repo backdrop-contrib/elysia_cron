@@ -11,32 +11,30 @@
  *   TRUE if code executed inside bee, FALSE otherwise.
  */
 function elysia_cron_bee_detect() {
-  return (!isset($_SERVER['SERVER_SOFTWARE']) && (php_sapi_name() == 'cli' || (is_numeric($_SERVER['argc']) && $_SERVER['argc'] > 0))) && function_exists('bee_error_handler');
-}
-
-/**
- * Exit from drush execution.
- */
-function elysia_cron_bee_die() {
-  bee_set_context('BEE_EXECUTION_COMPLETED', TRUE);
-  backdrop_exit();
+  return (empty($_SERVER['SERVER_SOFTWARE']) && (php_sapi_name() == 'cli' || (is_numeric($_SERVER['argc']) && $_SERVER['argc'] > 0))) && function_exists('bee_error_handler');
 }
 
 /**
  * Wrapper for bee_invoke().
  */
 function elysia_cron_bee_invoke() {
-  $args = bee_get_arguments();
+  bee_parse_input();
+  global $_bee_arguments, $_bee_options;
+  $args = $_bee_arguments;
+  $options = $_bee_options;
   array_shift($args);
 
-  // If drush command has no arguments or the first argument is not in the
+  // If bee command has no arguments or the first argument is not in the
   // list of allowed operations then we assume the cron execution.
   if (empty($args) || !in_array($args[0], array('list', 'run', 'enable', 'disable'))) {
-    $args = array('run');
+    $args = array('op' => 'run');
+  }
+  else {
+    $args['op'] = $args[0];
   }
 
-  call_user_func_array('bee_elysia_cron_run_wrapper', $args);
-  elysia_cron_bee_die();
+  call_user_func_array('bee_elysia_cron_run_wrapper', array($args, $options));
+  backdrop_exit();
 }
 
 /**
@@ -45,7 +43,7 @@ function elysia_cron_bee_invoke() {
 function elysia_cron_bee_command() {
   return array(
     'elysia-cron' => array(
-      'description' => bt('Run all cron tasks in all active modules for specified site using elysia cron system. This replaces the standard "core-cron" drush handler.'),
+      'description' => bt('Run all cron tasks in all active modules for specified site using elysia cron system. This replaces the standard "cron" bee handler.'),
       'callback' => 'bee_elysia_cron_run_wrapper',
       'command_requirements' => array(
         'backdrop_root' => FALSE,
@@ -97,7 +95,7 @@ function elysia_cron_bee_command() {
 }
 
 /**
- * Custom callback for 'elysia-cron' drush command.
+ * Custom callback for 'elysia-cron' bee command.
  */
 function bee_elysia_cron_run_wrapper($arguments, $options) {
   global $_elysia_cron_bee;
