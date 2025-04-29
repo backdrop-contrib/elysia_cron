@@ -936,7 +936,7 @@ function elysia_cron_message($message, $vars = array()) {
     drush_log(strip_tags(dt($message, $vars)), 'ok');
   }
   elseif($_elysia_cron_bee) {
-    bee_log(strip_tags(bt($message, $vars)), 'ok');
+    bee_message(strip_tags(bt($message, $vars)), 'ok');
   }
 }
 
