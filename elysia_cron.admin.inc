@@ -715,16 +715,16 @@ function elysia_cron_settings_form_submit(array $form, array &$form_state) {
     }
   }
   $config->set('default_rules', $elysia_cron_default_rules);
-  $config->set('disabled', $form_values['elysia_cron_disabled']);
-  $config->set('run_maintenance', $form_values['elysia_cron_run_maintenance']);
-  $config->set('queue_show_count', $form_values['elysia_cron_queue_show_count']);
-  $config->set('allowed_hosts', $form_values['elysia_cron_allowed_hosts']);
-  $config->set('time_limit', $form_values['elysia_cron_time_limit']);
-  $config->set('stuck_time', $form_values['elysia_cron_stuck_time']);
-  $config->set('debug_messages', $form_values['elysia_cron_debug_messages']);
-  $config->set('default_rule', $form_values['elysia_cron_default_rule']);
-  $config->set('alert_interval', $form_values['elysia_cron_alert_interval']);
-  $config->set('script', $form_values['elysia_cron_script']);
+  $config->set('disabled', (bool) $form_values['elysia_cron_disabled']);
+  $config->set('run_maintenance', (bool) $form_values['elysia_cron_run_maintenance']);
+  $config->set('queue_show_count', (bool) $form_values['elysia_cron_queue_show_count']);
+  $config->set('allowed_hosts', (bool) $form_values['elysia_cron_allowed_hosts']);
+  $config->set('time_limit', (int) $form_values['elysia_cron_time_limit']);
+  $config->set('stuck_time', (int) $form_values['elysia_cron_stuck_time']);
+  $config->set('debug_messages', (int) $form_values['elysia_cron_debug_messages']);
+  $config->set('default_rule', (string) $form_values['elysia_cron_default_rule']);
+  $config->set('alert_interval', (int) $form_values['elysia_cron_alert_interval']);
+  $config->set('script', (string) $form_values['elysia_cron_script']);
   $config->save();
   config_set('system.core','cron_safe_threshold', $form_values['cron_safe_threshold']);
   state_set('cron_key', $form_values['cron_key']);
